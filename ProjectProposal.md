@@ -1,4 +1,5 @@
-# CAMPUS UNIFIED PLATFORM
+# Arivolam
+
 ## Comprehensive Project Proposal for YIP Submission
 
 **Institution:** SAFI Institute, Vazhayur, Calicut University  
@@ -11,7 +12,7 @@
 
 ## EXECUTIVE SUMMARY
 
-**Campus Unified Platform** is a comprehensive, single-instance web application designed to consolidate all campus operations, academic functions, and student engagement into one intuitive ecosystem. It replaces the current fragmented approach (WhatsApp, Google Meet, Moodle, Google Classroom, separate ERP systems) with an integrated platform featuring immersive 3D campus navigation, real-time collaboration, and intelligent analytics.
+**Arivolam** is a comprehensive, single-instance web application designed to consolidate all campus operations, academic functions, and student engagement into one intuitive ecosystem. It replaces the current fragmented approach (WhatsApp, Google Meet, Moodle, Google Classroom, separate ERP systems) with an integrated platform featuring immersive 3D campus navigation, real-time collaboration, and intelligent analytics.
 
 The platform is being developed specifically to address pain points in modern educational institutions while demonstrating advanced full-stack development capabilities including real-time systems, 3D graphics, database management, and cloud architecture.
 
