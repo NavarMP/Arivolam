@@ -1,5 +1,5 @@
 # DETAILED IMPLEMENTATION ROADMAP
-## Campus Unified Platform - Week-by-Week Development Plan
+## Arivolam - Week-by-Week Development Plan
 
 **Team:** 4 Members (BCA 3rd Year, SAFI Institute)  
 **Duration:** 20 Weeks (5 Months)  
