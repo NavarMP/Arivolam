@@ -1,5 +1,5 @@
 # QUICK START GUIDE
-## Campus Unified Platform - What You Now Have
+## Arivolam - What You Now Have
 
 **Prepared for:** BCA 3rd Year Team, SAFI Institute, Vazhayur  
 **Course:** YIP (Year-end Implementation Project)  
@@ -12,7 +12,7 @@
 
 You now have **5 comprehensive documents** ready to use:
 
-### 1. **campus-app-abstract.md** ⭐ PRIORITY: IMMEDIATE
+### 1. **Abstract.md** ⭐ PRIORITY: IMMEDIATE
 **What it is:** 1-page abstract for YIP Project Idea Submission
 **Due:** **10th December 2025** (This week!)
 **Purpose:** Official submission to fulfill YIP requirement
@@ -24,7 +24,7 @@ You now have **5 comprehensive documents** ready to use:
 
 ---
 
-### 2. **first-presentation.md** ⭐ PRIORITY: HIGH
+### 2. **FirstPresentation.md** ⭐ PRIORITY: HIGH
 **What it is:** Complete slide content for first presentation (12-15 slides)
 **Date:** **22nd December 2025**
 **Purpose:** Present project to guide and seniors
@@ -42,7 +42,7 @@ You now have **5 comprehensive documents** ready to use:
 
 ---
 
-### 3. **project-proposal.md** ⭐ PRIORITY: HIGH
+### 3. **ProjectProposal.md** ⭐ PRIORITY: HIGH
 **What it is:** Comprehensive 20+ page project proposal document
 **Purpose:** Detailed project documentation for guide review
 **Content includes:**
@@ -65,7 +65,7 @@ You now have **5 comprehensive documents** ready to use:
 
 ---
 
-### 4. **presentation-guide.md** ⭐ PRIORITY: HIGH
+### 4. **PresentationGuide.md** ⭐ PRIORITY: HIGH
 **What it is:** Detailed slide layout guide with design tips
 **Purpose:** Help you create professional PowerPoint slides
 **Includes:**
@@ -85,7 +85,7 @@ You now have **5 comprehensive documents** ready to use:
 
 ---
 
-### 5. **implementation-roadmap.md** ⭐ PRIORITY: REFERENCE
+### 5. **ImplementationRoadmap.md** ⭐ PRIORITY: REFERENCE
 **What it is:** Week-by-week detailed development plan (20 weeks)
 **Purpose:** Technical roadmap for actual development
 **Includes:**
