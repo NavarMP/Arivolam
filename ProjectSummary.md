@@ -1,5 +1,5 @@
 # PROJECT SUMMARY & VISUAL OVERVIEW
-## Campus Unified Platform - One-Page Reference
+## Arivolam - One-Page Reference
 
 ---
 
