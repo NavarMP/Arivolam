@@ -1,8 +1,8 @@
-# Arivolam
+# Arivolam Abstract
 
 ## The Horizon of Learning
 
-### CAMPUS UNIFIED PLATFORM: A Comprehensive Digital Campus Ecosystem
+### A Comprehensive Digital Campus Ecosystem
 
 ### Domain
 Web Development (WD) with integrated 3D/GIS technologies, Real-time Collaboration, and Immersive Navigation
