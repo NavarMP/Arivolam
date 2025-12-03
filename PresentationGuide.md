@@ -8,7 +8,7 @@
 ## SLIDE 1: ABSTRACT
 **Duration:** 30 seconds
 
-**Title:** Campus Unified Platform: One App to Replace Them All
+**Title:** Arivolam: One App to Replace Them All
 
 **Content (Text/Bullets):**
 ```
