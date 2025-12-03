@@ -1,4 +1,4 @@
-# CAMPUS UNIFIED PLATFORM
+# Arivolam
 ## First Presentation Document (22nd December 2025)
 
 ### SLIDE 1: ABSTRACT
