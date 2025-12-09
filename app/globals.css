@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%; /* White */
+    --foreground: 203 97% 15%; /* Brand Blue #012d49 */
+    
+    --card: 0 0% 100%;
+    --card-foreground: 203 97% 15%;
+ 
+    --popover: 0 0% 100%;
+    --popover-foreground: 203 97% 15%;
+ 
+    --primary: 29 88% 52%; /* Brand Orange #ef8119 */
+    --primary-foreground: 0 0% 100%; /* White text on orange */
+ 
+    --secondary: 210 40% 96.1%; /* Light gray blue */
+    --secondary-foreground: 222.2 47.4% 11.2%;
+ 
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+ 
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+ 
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 29 88% 52%; /* Brand Orange ring */
+ 
+    --radius: 0.75rem;
+  }
+ 
+  .dark {
+    --background: 203 97% 10%; /* Very dark version of brand blue */
+    --foreground: 0 0% 98%; /* White */
+ 
+    --card: 203 97% 12%; /* Slightly lighter dark blue */
+    --card-foreground: 0 0% 98%;
+ 
+    --popover: 203 97% 12%;
+    --popover-foreground: 0 0% 98%;
+ 
+    --primary: 29 88% 52%; /* Brand Orange #ef8119 */
+    --primary-foreground: 0 0% 100%;
+ 
+    --secondary: 217.2 32.6% 17.5%; /* Darker secondary */
+    --secondary-foreground: 210 40% 98%;
+ 
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+ 
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+ 
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+ 
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 29 88% 52%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
