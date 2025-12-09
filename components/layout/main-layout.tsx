@@ -5,7 +5,7 @@ import { Home, Compass, BookOpen, Calendar, User, LayoutGrid } from "lucide-reac
 import { ThemeToggle } from "@/components/theme-toggle";
 
 const dockItems: DockItem[] = [
-    { title: "Dashboard", icon: Home, href: "/dashboard" },
+    { title: "Dashboard", icon: Home, href: "/student" },
     { title: "Campus Map", icon: Compass, href: "/map" },
     { title: "Academics", icon: BookOpen, href: "/academics" },
     { title: "Calendar", icon: Calendar, href: "/calendar" },
