@@ -3,6 +3,7 @@
 import { DockNavigation, DockItem } from "@/components/layout/dock-navigation";
 import { Home, Compass, BookOpen, Calendar, User, LayoutGrid } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { UserNav } from "@/components/layout/user-nav";
 
 const dockItems: DockItem[] = [
     { title: "Dashboard", icon: Home, href: "/student" },
@@ -31,7 +32,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                     {/* Search Placeholer */}
                     <div className="hidden text-sm text-muted-foreground md:block">Cmd+K to search...</div>
                     <ThemeToggle />
-                    <div className="h-8 w-8 rounded-full bg-muted"></div>
+                    <UserNav />
                 </div>
             </header>
 
