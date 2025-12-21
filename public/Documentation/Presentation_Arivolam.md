@@ -1,8 +1,8 @@
-# Arivolam - Smart Campus System Presentation
+# Arivolam - The Horizon of Learning
 
 ## Title Slide
 -   **Logo**: [Arivolam Logo]
--   **Title**: **Arivolam** - The Next-Gen Smart Campus Platform
+-   **Title**: **Arivolam** - The Horizon of Learning
 -   **Web App**: [https://Arivolam.vercel.app](https://Arivolam.vercel.app)
 
 
@@ -28,7 +28,7 @@ Arivolam is a unified web-based platform designed to digitize and modernize the 
 ## 2. Chapter 1: Introduction (2 Slides)
 
 ### Slide 1: Introduction & Problem Domain
--   **Topic**: Arivolam - Next-Generation Campus Management System.
+-   **Topic**: Arivolam - The Horizon of Learning
 -   **Problem Statement**:
     -   Current campus solutions are fragmented.
     -   Students and faculty juggle between **ERP systems** (for fees/attendance), **LMS** (for notes/assignments), and **Personal Messengers** (WhatsApp for communication).
