@@ -12,7 +12,7 @@
         - Problem statement
         - Project motivation
         - Objectives
-        - Scope (what is included/excluded)
+        - Scope (Included: Student/Parent/Staff/Admin Dashboards, Academics, Communication, Map; Excluded: Hardware manufacturing)
 3. *System Analysis (5 Slides)*
     - Deep dive into analysis:
         - Existing system (if any)

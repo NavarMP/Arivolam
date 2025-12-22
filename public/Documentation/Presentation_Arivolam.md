@@ -41,7 +41,7 @@ Arivolam is a unified web-based platform designed to digitize and modernize the 
     -   Foster better collaboration through integrated chat and video.
     -    Simplify campus logistics with digital maps and resource management.
 -   **Scope**:
-    -   **Included**: Student/Teacher/Admin dashboards, Academic modules (Attendance, Assignments), Communication (Chat, Video), Campus Tools (Map, Gallery).
+    -   **Included**: Student/Parent/Staff/Admin dashboards, Academic modules (Attendance, Assignments), Communication (Chat, Video), Campus Tools (Map, Gallery).
     -   **Excluded**: Hardware manufacturing (using existing devices), proprietary hardware sensors (initially utilizing standard mobile sensors).
 
 ---
@@ -67,7 +67,7 @@ Arivolam is a unified web-based platform designed to digitize and modernize the 
 
 ### Slide 4: Advantages of Proposed Solution
 -   **Seamless UI/UX**: Designed with modern aesthetics (Glassmorphism, Dark Mode) to feel premium.
--   **Context-Aware**: The system knows who you are (Student vs Teacher) and shows only relevant tools.
+-   **Context-Aware**: The system knows who you are (Student, Parent, Staff, or Admin) and shows only relevant tools.
 -   **Future-Ready**: Built on a scalable stack (Next.js) capable of integrating AI and AR features easily unlike legacy monaliths.
 
 ### Slide 5: Feasibility Study
@@ -103,7 +103,7 @@ Arivolam is a unified web-based platform designed to digitize and modernize the 
 
 ### Slide 4: Detailed Diagrams Description
 -   **ER Diagram (Entity-Relationship)**:
-    -   **Users** (Students, Teachers, Admin) linked to **Profiles**.
+    -   **Users** (Students, Parents, Staff, Admins) linked to **Profiles**.
     -   **Courses** linked to **Enrollments**.
     -   **Assignments** linked to **Courses** and **Submissions**.
     -   **Messages** linked to **ChatRooms** and **Users**.

@@ -1,4 +1,5 @@
 # Project Internal Assessments and Schedule
+> Scope: Arivolam (Web Platform for Students, Parents, Staff, Admin)
 
 *Project Internal Assessments*
 

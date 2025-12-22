@@ -30,6 +30,6 @@ There is a distinct lack of "All-in-One" platforms that combine **Academic Manag
 
 ## Proposed Solution: Arivolam
 Arivolam addresses these gaps by:
-1.  **Unifying Functionality**: Merging LMS, ERP, and Communication tools into one.
+1.  **Unifying Functionality**: Merging LMS, ERP, and Communication tools into one platform for Students, Parents, Staff, and Admins.
 2.  **Modernizing Experience**: Offering a sleek, "Gen-Z friendly" UI/UX compliant with modern design standards.
 3.  **Innovating with Tech**: Introducing AR navigation and detailed campus maps which are absent in almost all competitors.

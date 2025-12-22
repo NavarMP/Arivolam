@@ -21,7 +21,7 @@
 ### Phase 3: Development - Core Modules (Weeks 6-10)
 *   **Objective**: Build the foundational features.
 *   **Activities**:
-    *   **Weeks 6-7**: Authentication (Admin/Teacher/Student), Dashboard Setup.
+    *   **Weeks 6-7**: Authentication (Student, Parent, Staff, Admin), Dashboard Setup.
     *   **Weeks 8-9**: Academic Modules (Attendance, Assignments, Progress Reports).
     *   **Week 10**: Communication Modules (Notifications, Basic Group Chat).
     *   **Internal Assessment 1**: Presentation of partial implementation (Design + Core/Auth).
