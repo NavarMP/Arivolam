@@ -4,6 +4,7 @@ import { DockNavigation, DockItem } from "@/components/layout/dock-navigation";
 import { Home, Compass, BookOpen, Calendar, User, LayoutGrid } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserNav } from "@/components/layout/user-nav";
+import Image from "next/image";
 
 const dockItems: DockItem[] = [
     { title: "Dashboard", icon: Home, href: "/student" },
@@ -22,10 +23,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
 
             <header className="sticky top-0 z-50 flex items-center justify-between border-b border-border/40 bg-background/95 px-6 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-full bg-primary/20 p-1">
-                        {/* Logo placeholder if needed */}
-                        <div className="h-full w-full rounded-full bg-primary" />
-                    </div>
+                    <Image src="/assets/Logo.svg" alt="Arivolam" width={32} height={32} className="h-8 w-8" />
                     <span className="text-lg font-bold tracking-tight">Arivolam</span>
                 </div>
                 <div className="flex items-center gap-4">

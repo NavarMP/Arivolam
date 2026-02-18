@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { FeedHeader } from "@/components/feed/feed-header";
 import { BottomNav } from "@/components/feed/bottom-nav";
+import { AIChatWidget } from "@/components/ai/chat-widget";
 
 export default async function FeedLayout({
     children,
@@ -17,6 +18,8 @@ export default async function FeedLayout({
                 {children}
             </main>
             <BottomNav user={user} />
+            <AIChatWidget />
         </div>
     );
 }
+

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Bell, Search, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -16,9 +17,7 @@ export function FeedHeader({ user }: FeedHeaderProps) {
             <div className="container mx-auto flex h-14 max-w-2xl items-center justify-between px-4">
                 {/* Logo */}
                 <Link href="/" className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary">
-                        <span className="text-sm font-bold text-primary-foreground">A</span>
-                    </div>
+                    <Image src="/assets/Logo.svg" alt="Arivolam" width={32} height={32} className="h-8 w-8" />
                     <span className="text-lg font-bold tracking-tight hidden sm:inline">
                         Arivolam
                     </span>

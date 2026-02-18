@@ -118,8 +118,8 @@ export function FeedContent({ initialPosts, institutions, user }: FeedContentPro
                                     <div className="group w-[200px] shrink-0 overflow-hidden rounded-xl border border-border/50 bg-card transition-all hover:shadow-md hover:border-primary/30">
                                         <div className="h-20 bg-gradient-to-r from-primary/20 to-blue-500/20" />
                                         <div className="p-3 -mt-5">
-                                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-card border border-border shadow-sm text-sm font-bold text-primary">
-                                                {inst.short_name?.charAt(0) || inst.name.charAt(0)}
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-card border border-border shadow-sm overflow-hidden">
+                                                <img src={inst.logo_url || "/assets/Logo.svg"} alt={inst.short_name || inst.name} className="h-8 w-8 object-contain" />
                                             </div>
                                             <h4 className="mt-2 text-sm font-semibold leading-tight group-hover:text-primary transition-colors line-clamp-1">
                                                 {inst.short_name || inst.name}

@@ -40,7 +40,7 @@ export async function updateSession(request: NextRequest) {
     const pathname = request.nextUrl.pathname
 
     // ─── Public routes (always accessible) ───
-    const publicRoutes = ['/', '/auth', '/explore']
+    const publicRoutes = ['/', '/auth', '/explore', '/debug-auth']
     const isPublicRoute = publicRoutes.some(route =>
         pathname === route || pathname.startsWith(`${route}/`)
     )

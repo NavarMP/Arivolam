@@ -148,7 +148,7 @@ export default function SignupPage() {
                     {/* Logo & Title */}
                     <div className="mb-6 text-center">
                         <div className="auth-logo mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 shadow-lg shadow-primary/10">
-                            <div className="h-8 w-8 rounded-xl bg-primary" />
+                            <img src="/assets/Logo.svg" alt="Arivolam" className="h-9 w-9" />
                         </div>
                         <h1 className="auth-title text-2xl font-bold tracking-tight">Create your account</h1>
                         <p className="auth-subtitle mt-2 text-sm text-muted-foreground">
