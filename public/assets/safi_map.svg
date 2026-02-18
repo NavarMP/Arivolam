@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 1080 1350">
+  <!-- Generator: Adobe Illustrator 30.2.1, SVG Export Plug-In . SVG Version: 2.1.1 Build 1)  -->
+  <defs>
+    <style>
+      .st0, .st1 {
+        font-family: Poppins-Regular, Poppins;
+        font-size: 19.54px;
+      }
+
+      .st1 {
+        fill: #fff;
+      }
+
+      .st2 {
+        fill: #aa1b1b;
+      }
+
+      .st3 {
+        fill: none;
+        stroke: #000;
+        stroke-miterlimit: 10;
+        stroke-width: 16.99px;
+      }
+    </style>
+  </defs>
+  <rect x="203.75" y="419.22" width="68.05" height="156.47"/>
+  <rect x="478.48" y="218.29" width="98.03" height="197.37" transform="translate(106.72 766.05) rotate(-77.86)"/>
+  <rect x="706.08" y="218.88" width="31.91" height="67.29" transform="translate(1258.02 798.25) rotate(-153.76)"/>
+  <rect x="853.43" y="192.57" width="50.45" height="127.04" transform="translate(1553.55 874.25) rotate(-153.76)"/>
+  <rect x="616.18" y="468.92" width="58.51" height="75.44" transform="translate(1306.36 992.92) rotate(178.21)"/>
+  <rect x="477.06" y="647.72" width="80.84" height="200.39" transform="translate(1058.02 1479.33) rotate(178.21)"/>
+  <circle cx="376.3" cy="456.33" r="28.93"/>
+  <line class="st3" x1="449.9" y1="1162.04" x2="437.4" y2="364.9"/>
+  <polygon class="st3" points="416.34 1053.72 539.47 1048.16 696.87 679.68 692.85 419.22 395.04 356.57 284.87 456.33 289.5 834.3 416.34 1053.72"/>
+  <line class="st3" x1="827.94" y1="243.62" x2="692.85" y2="419.22"/>
+  <line class="st3" x1="600.76" y1="399.85" x2="602.43" y2="546.36"/>
+  <rect x="413.56" y="1132.65" width="16.66" height="16.66"/>
+  <circle class="st2" cx="427.45" cy="1028.61" r="5.5"/>
+  <path class="st2" d="M361.27,1047.01h-192.18c-8.16,0-14.78-6.62-14.78-14.78h0c0-8.16,6.62-14.78,14.78-14.78h192.18c5.77,5.77,9.01,9.01,14.78,14.78h0c-5.77,5.77-9.01,9.01-14.78,14.78Z"/>
+  <text class="st1" transform="translate(201.64 1038.32)"><tspan x="0" y="0">You are here</tspan></text>
+  <text class="st0" transform="translate(490.87 1150.72)"><tspan x="0" y="0">Main Gate</tspan></text>
+  <text class="st0" transform="translate(459.31 879.16)"><tspan x="0" y="0">Science Block</tspan></text>
+  <text class="st0" transform="translate(551.61 566.82)"><tspan x="0" y="0">Library Block</tspan></text>
+  <text class="st0" transform="translate(139.66 604.15)"><tspan x="0" y="0">Ladies Hostel</tspan></text>
+  <text class="st0" transform="translate(216.72 305.67)"><tspan x="0" y="0">Administrative Block</tspan></text>
+  <text class="st0" transform="translate(818.23 351.95)"><tspan x="0" y="0">Men’s Hostel</tspan></text>
+  <text class="st0" transform="translate(616.55 230.51)"><tspan x="0" y="0">Canteen</tspan></text>
+  <text class="st0" transform="translate(331.06 511.91)"><tspan x="0" y="0">Cultural</tspan><tspan x="5.55" y="16.99">Centre</tspan></text>
+</svg>

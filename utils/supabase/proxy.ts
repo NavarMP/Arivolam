@@ -15,7 +15,7 @@ export async function updateSession(request: NextRequest) {
                     return request.cookies.getAll()
                 },
                 setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value, options }) =>
+                    cookiesToSet.forEach(({ name, value }) =>
                         request.cookies.set(name, value)
                     )
                     supabaseResponse = NextResponse.next({
@@ -37,32 +37,84 @@ export async function updateSession(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser()
 
-    if (
-        !user &&
-        !request.nextUrl.pathname.startsWith('/login') &&
-        !request.nextUrl.pathname.startsWith('/auth') &&
-        // Allow public access to home page and static assets if needed
-        request.nextUrl.pathname !== '/'
-    ) {
-        // no user, potentially redirect to login? 
-        // For now we just refresh session. If you want to protect routes:
-        // const url = request.nextUrl.clone()
-        // url.pathname = '/login'
-        // return NextResponse.redirect(url)
+    const pathname = request.nextUrl.pathname
+
+    // ─── Public routes (always accessible) ───
+    const publicRoutes = ['/', '/auth', '/explore']
+    const isPublicRoute = publicRoutes.some(route =>
+        pathname === route || pathname.startsWith(`${route}/`)
+    )
+
+    // ─── Dev admin route protection ───
+    if (pathname.startsWith('/dev-admin')) {
+        if (!user) {
+            const url = request.nextUrl.clone()
+            url.pathname = '/auth/login'
+            url.searchParams.set('next', pathname)
+            return NextResponse.redirect(url)
+        }
+
+        // Check if user is dev admin
+        const { data: profile } = await supabase
+            .from('arivolam_profiles')
+            .select('is_dev_admin')
+            .eq('id', user.id)
+            .single()
+
+        if (!profile?.is_dev_admin) {
+            const url = request.nextUrl.clone()
+            url.pathname = '/'
+            return NextResponse.redirect(url)
+        }
     }
 
-    // IMPORTANT: You *must* return the supabaseResponse object as it is. If you're
-    // creating a new Response object with NextResponse.next() make sure to:
-    // 1. Pass the request in it, like so:
-    //    const myNewResponse = NextResponse.next({ request })
-    // 2. Copy over the cookies, like so:
-    //    myNewResponse.cookies.setAll(supabaseResponse.cookies.getAll())
-    // 3. Change the myNewResponse object to fit your needs, but avoid changing
-    //    the cookies!
-    // 4. Finally:
-    //    return myNewResponse
-    // If this is not done, you may be causing the browser and server to go out
-    // of sync and terminate the user's session prematurely!
+    // ─── Campus route protection ───
+    if (pathname.startsWith('/campus/')) {
+        if (!user) {
+            const url = request.nextUrl.clone()
+            url.pathname = '/auth/login'
+            url.searchParams.set('next', pathname)
+            return NextResponse.redirect(url)
+        }
 
+        // Extract institution slug from URL: /campus/[slug]/...
+        const slugMatch = pathname.match(/^\/campus\/([^/]+)/)
+        if (slugMatch) {
+            const slug = slugMatch[1]
+
+            // Check institution membership
+            const { data: institution } = await supabase
+                .from('institutions')
+                .select('id')
+                .eq('slug', slug)
+                .single()
+
+            if (institution) {
+                const { data: membership } = await supabase
+                    .from('institution_members')
+                    .select('id')
+                    .eq('user_id', user.id)
+                    .eq('institution_id', institution.id)
+                    .eq('is_active', true)
+                    .single()
+
+                if (!membership) {
+                    // Not a member — redirect to institution login
+                    const url = request.nextUrl.clone()
+                    url.pathname = '/auth/institution-login'
+                    return NextResponse.redirect(url)
+                }
+            }
+        }
+    }
+
+    // ─── Redirect logged-in users away from auth pages ───
+    if (user && (pathname.startsWith('/auth/login') || pathname.startsWith('/auth/signup'))) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/'
+        return NextResponse.redirect(url)
+    }
+
+    // IMPORTANT: You *must* return the supabaseResponse object as it is.
     return supabaseResponse
 }
