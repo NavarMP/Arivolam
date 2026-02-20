@@ -26,7 +26,7 @@ export default async function CampusSlugLayout({
 
     if (!institution) redirect("/");
 
-    // Check user is a member of this institution
+    // Check user membership (don't redirect — allow visitors to browse)
     const { data: membership } = await supabase
         .from("institution_members")
         .select("id, role")
@@ -35,7 +35,7 @@ export default async function CampusSlugLayout({
         .eq("is_active", true)
         .single();
 
-    if (!membership) redirect("/");
+    const userRole = membership?.role || "visitor";
 
     // Fetch buildings & POIs for AI context
     const [{ data: buildings }, { data: pois }] = await Promise.all([
@@ -67,7 +67,7 @@ export default async function CampusSlugLayout({
     return (
         <CampusLayout
             institution={institution}
-            userRole={membership.role}
+            userRole={userRole}
             slug={slug}
             campusContext={campusContext}
         >
@@ -75,4 +75,3 @@ export default async function CampusSlugLayout({
         </CampusLayout>
     );
 }
-

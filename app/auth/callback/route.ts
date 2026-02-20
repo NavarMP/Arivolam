@@ -11,15 +11,32 @@ export async function GET(request: Request) {
         const { error } = await supabase.auth.exchangeCodeForSession(code)
 
         if (!error) {
+            // Check if user has completed onboarding (has a username)
+            const { data: { user } } = await supabase.auth.getUser()
+            let redirectTo = next
+
+            if (user) {
+                const { data: profile } = await supabase
+                    .from('arivolam_profiles')
+                    .select('username')
+                    .eq('id', user.id)
+                    .single()
+
+                // If no username, redirect to onboarding
+                if (!profile?.username) {
+                    redirectTo = '/auth/onboarding'
+                }
+            }
+
             const forwardedHost = request.headers.get('x-forwarded-host')
             const isLocalEnv = process.env.NODE_ENV === 'development'
 
             if (isLocalEnv) {
-                return NextResponse.redirect(`${origin}${next}`)
+                return NextResponse.redirect(`${origin}${redirectTo}`)
             } else if (forwardedHost) {
-                return NextResponse.redirect(`https://${forwardedHost}${next}`)
+                return NextResponse.redirect(`https://${forwardedHost}${redirectTo}`)
             } else {
-                return NextResponse.redirect(`${origin}${next}`)
+                return NextResponse.redirect(`${origin}${redirectTo}`)
             }
         }
     }

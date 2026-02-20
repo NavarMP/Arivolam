@@ -27,7 +27,7 @@ export function BottomNav({ user }: BottomNavProps) {
     const allItems = [...navItems, profileItem];
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-background/80 backdrop-blur-xl md:hidden">
+        <div className="fixed bottom-4 left-4 right-4 z-50 rounded-2xl border border-border/30 bg-background/60 shadow-lg shadow-black/5 backdrop-blur-2xl md:hidden">
             <nav className="flex items-center justify-around px-2 py-2">
                 {allItems.map((item) => {
                     const isActive = pathname === item.href;
@@ -51,16 +51,16 @@ export function BottomNav({ user }: BottomNavProps) {
                                     <motion.div
                                         whileTap={{ scale: 0.9 }}
                                         className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${isActive
-                                                ? "text-primary"
-                                                : "text-muted-foreground"
+                                            ? "text-primary"
+                                            : "text-muted-foreground"
                                             }`}
                                     >
                                         <item.icon className="h-5 w-5" />
                                     </motion.div>
                                     <span
                                         className={`text-[10px] font-medium ${isActive
-                                                ? "text-primary"
-                                                : "text-muted-foreground"
+                                            ? "text-primary"
+                                            : "text-muted-foreground"
                                             }`}
                                     >
                                         {item.label}

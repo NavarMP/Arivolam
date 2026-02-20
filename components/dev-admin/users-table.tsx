@@ -1,12 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
     Search,
     Shield,
+    ShieldOff,
     Building2,
     Calendar,
+    MoreHorizontal,
+    UserX,
+    Loader2,
 } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+    DropdownMenuSub,
+    DropdownMenuSubTrigger,
+    DropdownMenuSubContent,
+} from "@/components/ui/dropdown-menu";
+import { toggleDevAdmin, removeUserFromInstitution, updateUserRole } from "@/app/dev-admin/actions";
+import { useToast } from "@/hooks/use-toast";
+import Link from "next/link";
 
 interface UserProfile {
     id: string;
@@ -17,7 +35,7 @@ interface UserProfile {
     created_at: string;
     memberships: {
         role: string;
-        institution: { name: string; short_name: string | null; slug: string } | null;
+        institution: { name: string; short_name: string | null; slug: string; id?: string } | null;
     }[];
 }
 
@@ -28,22 +46,63 @@ interface UsersTableProps {
 export function UsersTable({ users }: UsersTableProps) {
     const [search, setSearch] = useState("");
     const [roleFilter, setRoleFilter] = useState<string>("all");
+    const [isPending, startTransition] = useTransition();
+    const { toast } = useToast();
+    const router = useRouter();
 
     const filtered = users.filter((user) => {
         const matchesSearch =
             (user.display_name?.toLowerCase().includes(search.toLowerCase()) ?? false) ||
             (user.username?.toLowerCase().includes(search.toLowerCase()) ?? false) ||
             user.id.toLowerCase().includes(search.toLowerCase());
-
         const matchesRole =
             roleFilter === "all" ||
             (roleFilter === "dev_admin" && user.is_dev_admin) ||
             user.memberships.some((m) => m.role === roleFilter);
-
         return matchesSearch && matchesRole;
     });
 
     const roleOptions = ["all", "dev_admin", "admin", "teacher", "student", "parent"];
+
+    const handleToggleDevAdmin = (user: UserProfile) => {
+        const action = user.is_dev_admin ? "Remove dev admin from" : "Promote to dev admin:";
+        if (!confirm(`${action} ${user.display_name || user.id}?`)) return;
+
+        startTransition(async () => {
+            const result = await toggleDevAdmin(user.id, !user.is_dev_admin);
+            if (result.error) {
+                toast({ title: "Error", description: result.error, variant: "destructive" });
+            } else {
+                toast({ title: user.is_dev_admin ? "Dev admin removed" : "Promoted to dev admin" });
+                router.refresh();
+            }
+        });
+    };
+
+    const handleChangeRole = (userId: string, institutionId: string, newRole: string) => {
+        startTransition(async () => {
+            const result = await updateUserRole(userId, institutionId, newRole);
+            if (result.error) {
+                toast({ title: "Error", description: result.error, variant: "destructive" });
+            } else {
+                toast({ title: `Role updated to ${newRole}` });
+                router.refresh();
+            }
+        });
+    };
+
+    const handleRemoveFromInstitution = (userId: string, institutionId: string, instName: string) => {
+        if (!confirm(`Remove user from ${instName}?`)) return;
+        startTransition(async () => {
+            const result = await removeUserFromInstitution(userId, institutionId);
+            if (result.error) {
+                toast({ title: "Error", description: result.error, variant: "destructive" });
+            } else {
+                toast({ title: `Removed from ${instName}` });
+                router.refresh();
+            }
+        });
+    };
 
     return (
         <div className="space-y-4">
@@ -69,9 +128,7 @@ export function UsersTable({ users }: UsersTableProps) {
                                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                                 }`}
                         >
-                            {role === "dev_admin"
-                                ? "Dev Admin"
-                                : role}
+                            {role === "dev_admin" ? "Dev Admin" : role}
                         </button>
                     ))}
                 </div>
@@ -87,47 +144,29 @@ export function UsersTable({ users }: UsersTableProps) {
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="border-b border-border/50 bg-muted/30">
-                                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                                    User
-                                </th>
-                                <th className="hidden px-4 py-3 text-left font-medium text-muted-foreground sm:table-cell">
-                                    Institutions
-                                </th>
-                                <th className="hidden px-4 py-3 text-left font-medium text-muted-foreground md:table-cell">
-                                    Joined
-                                </th>
-                                <th className="px-4 py-3 text-center font-medium text-muted-foreground">
-                                    Badges
-                                </th>
+                                <th className="px-4 py-3 text-left font-medium text-muted-foreground">User</th>
+                                <th className="hidden px-4 py-3 text-left font-medium text-muted-foreground sm:table-cell">Institutions</th>
+                                <th className="hidden px-4 py-3 text-left font-medium text-muted-foreground md:table-cell">Joined</th>
+                                <th className="px-4 py-3 text-center font-medium text-muted-foreground">Badges</th>
+                                <th className="px-4 py-3 text-center font-medium text-muted-foreground">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border/50">
                             {filtered.map((user) => (
-                                <tr
-                                    key={user.id}
-                                    className="transition-colors hover:bg-muted/20"
-                                >
+                                <tr key={user.id} className="transition-colors hover:bg-muted/20">
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-3">
                                             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary overflow-hidden">
                                                 {user.avatar_url ? (
-                                                    <img
-                                                        src={user.avatar_url}
-                                                        alt=""
-                                                        className="h-9 w-9 rounded-full object-cover"
-                                                    />
+                                                    <img src={user.avatar_url} alt="" className="h-9 w-9 rounded-full object-cover" />
                                                 ) : (
                                                     (user.display_name?.charAt(0) || "U").toUpperCase()
                                                 )}
                                             </div>
                                             <div className="min-w-0">
-                                                <p className="font-medium truncate">
-                                                    {user.display_name || "Anonymous"}
-                                                </p>
+                                                <p className="font-medium truncate">{user.display_name || "Anonymous"}</p>
                                                 <p className="text-xs text-muted-foreground truncate">
-                                                    {user.username
-                                                        ? `@${user.username}`
-                                                        : user.id.slice(0, 8) + "…"}
+                                                    {user.username ? `@${user.username}` : user.id.slice(0, 8) + "…"}
                                                 </p>
                                             </div>
                                         </div>
@@ -136,48 +175,105 @@ export function UsersTable({ users }: UsersTableProps) {
                                         {user.memberships.length > 0 ? (
                                             <div className="flex flex-wrap gap-1">
                                                 {user.memberships.map((m, i) => (
-                                                    <span
-                                                        key={i}
-                                                        className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-medium text-blue-600"
-                                                    >
+                                                    <span key={i} className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-medium text-blue-600">
                                                         <Building2 className="h-2.5 w-2.5" />
                                                         {m.institution?.short_name || m.institution?.name || "Unknown"} ({m.role})
                                                     </span>
                                                 ))}
                                             </div>
                                         ) : (
-                                            <span className="text-xs text-muted-foreground">
-                                                No institution
-                                            </span>
+                                            <span className="text-xs text-muted-foreground">No institution</span>
                                         )}
                                     </td>
                                     <td className="hidden px-4 py-3 md:table-cell">
                                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                             <Calendar className="h-3 w-3" />
-                                            {new Date(user.created_at).toLocaleDateString(
-                                                "en-IN",
-                                                { day: "numeric", month: "short", year: "numeric" }
-                                            )}
+                                            {new Date(user.created_at).toLocaleDateString("en-IN", {
+                                                day: "numeric", month: "short", year: "numeric",
+                                            })}
                                         </div>
                                     </td>
                                     <td className="px-4 py-3 text-center">
                                         {user.is_dev_admin && (
                                             <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-bold text-destructive">
-                                                <Shield className="h-3 w-3" />
-                                                DEV
+                                                <Shield className="h-3 w-3" /> DEV
                                             </span>
                                         )}
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <button className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-48">
+                                                {user.username && (
+                                                    <DropdownMenuItem asChild>
+                                                        <Link href={`/${user.username}`} className="flex items-center gap-2">
+                                                            View Profile
+                                                        </Link>
+                                                    </DropdownMenuItem>
+                                                )}
+                                                <DropdownMenuItem onClick={() => handleToggleDevAdmin(user)}>
+                                                    {user.is_dev_admin ? (
+                                                        <><ShieldOff className="mr-2 h-3.5 w-3.5" /> Remove Dev Admin</>
+                                                    ) : (
+                                                        <><Shield className="mr-2 h-3.5 w-3.5" /> Make Dev Admin</>
+                                                    )}
+                                                </DropdownMenuItem>
+
+                                                {user.memberships.length > 0 && (
+                                                    <>
+                                                        <DropdownMenuSeparator />
+                                                        {user.memberships.map((m, i) => (
+                                                            <DropdownMenuSub key={i}>
+                                                                <DropdownMenuSubTrigger>
+                                                                    <Building2 className="mr-2 h-3.5 w-3.5" />
+                                                                    {m.institution?.short_name || m.institution?.name}
+                                                                </DropdownMenuSubTrigger>
+                                                                <DropdownMenuSubContent>
+                                                                    {["admin", "teacher", "student", "parent"].map((role) => (
+                                                                        <DropdownMenuItem
+                                                                            key={role}
+                                                                            disabled={m.role === role}
+                                                                            onClick={() => {
+                                                                                if (m.institution) {
+                                                                                    handleChangeRole(user.id, (m.institution as unknown as { id: string }).id || "", role);
+                                                                                }
+                                                                            }}
+                                                                            className="capitalize"
+                                                                        >
+                                                                            {role}
+                                                                            {m.role === role && " ✓"}
+                                                                        </DropdownMenuItem>
+                                                                    ))}
+                                                                    <DropdownMenuSeparator />
+                                                                    <DropdownMenuItem
+                                                                        className="text-destructive focus:text-destructive"
+                                                                        onClick={() => {
+                                                                            if (m.institution) {
+                                                                                handleRemoveFromInstitution(user.id, (m.institution as unknown as { id: string }).id || "", m.institution.name);
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        <UserX className="mr-2 h-3.5 w-3.5" /> Remove
+                                                                    </DropdownMenuItem>
+                                                                </DropdownMenuSubContent>
+                                                            </DropdownMenuSub>
+                                                        ))}
+                                                    </>
+                                                )}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
-
                 {filtered.length === 0 && (
-                    <div className="px-4 py-12 text-center text-sm text-muted-foreground">
-                        No users found
-                    </div>
+                    <div className="px-4 py-12 text-center text-sm text-muted-foreground">No users found</div>
                 )}
             </div>
         </div>

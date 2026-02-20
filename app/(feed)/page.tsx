@@ -1,6 +1,8 @@
 import { createClient } from "@/utils/supabase/server";
 import { FeedContent } from "@/components/feed/feed-content";
 
+export const dynamic = 'force-dynamic';
+
 export default async function FeedPage() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();

@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
         const systemInstruction = SYSTEM_PROMPT + buildCampusContext(campusData);
 
         const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash",
+            model: "gemini-3-flash-preview",
             systemInstruction,
             generationConfig: {
                 maxOutputTokens: 1024,

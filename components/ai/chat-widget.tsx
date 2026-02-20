@@ -177,7 +177,7 @@ export function AIChatWidget({ campusContext }: AIChatWidgetProps) {
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
                         onClick={() => setIsOpen(true)}
-                        className="fixed bottom-6 right-6 z-[60] flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/25 transition-shadow hover:shadow-xl hover:shadow-primary/30"
+                        className="fixed bottom-24 right-4 z-[60] flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/25 transition-shadow hover:shadow-xl hover:shadow-primary/30 md:bottom-6 md:right-6"
                         aria-label="Open AI Assistant"
                     >
                         <Sparkles className="h-6 w-6" />
@@ -196,7 +196,7 @@ export function AIChatWidget({ campusContext }: AIChatWidgetProps) {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
                         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                        className="fixed bottom-4 right-4 z-[60] flex h-[min(600px,85vh)] w-[min(400px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-border/50 bg-background shadow-2xl shadow-black/10"
+                        className="fixed bottom-20 right-2 left-2 z-[60] flex h-[min(500px,70vh)] flex-col overflow-hidden rounded-2xl border border-border/50 bg-background shadow-2xl shadow-black/10 md:bottom-4 md:right-4 md:left-auto md:h-[min(600px,85vh)] md:w-[min(400px,calc(100vw-2rem))]"
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent px-4 py-3">
@@ -236,7 +236,7 @@ export function AIChatWidget({ campusContext }: AIChatWidgetProps) {
                         </div>
 
                         {/* Messages area */}
-                        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 scrollbar-hide">
+                        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-3 space-y-3 scrollbar-hide">
                             {/* Welcome message */}
                             {messages.length === 0 && (
                                 <motion.div
@@ -288,8 +288,8 @@ export function AIChatWidget({ campusContext }: AIChatWidgetProps) {
                                 >
                                     <div
                                         className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${msg.role === "user"
-                                                ? "bg-primary text-primary-foreground"
-                                                : "bg-primary/10 text-primary"
+                                            ? "bg-primary text-primary-foreground"
+                                            : "bg-primary/10 text-primary"
                                             }`}
                                     >
                                         {msg.role === "user" ? (
@@ -300,8 +300,8 @@ export function AIChatWidget({ campusContext }: AIChatWidgetProps) {
                                     </div>
                                     <div
                                         className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${msg.role === "user"
-                                                ? "bg-primary text-primary-foreground rounded-br-md"
-                                                : "bg-muted/80 text-foreground rounded-bl-md"
+                                            ? "bg-primary text-primary-foreground rounded-br-md"
+                                            : "bg-muted/80 text-foreground rounded-bl-md"
                                             }`}
                                     >
                                         {renderMessage(msg.content)}

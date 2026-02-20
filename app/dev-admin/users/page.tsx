@@ -16,7 +16,7 @@ async function getUsers() {
         (profiles || []).map(async (p) => {
             const { data: memberships } = await supabase
                 .from("institution_members")
-                .select("role, institutions(name, short_name, slug)")
+                .select("role, institution_id, institutions(name, short_name, slug)")
                 .eq("user_id", p.id)
                 .eq("is_active", true);
 
@@ -24,11 +24,9 @@ async function getUsers() {
                 ...p,
                 memberships: (memberships || []).map((m) => ({
                     role: m.role,
-                    institution: (m.institutions as unknown as {
-                        name: string;
-                        short_name: string | null;
-                        slug: string;
-                    }),
+                    institution: m.institutions
+                        ? { ...(m.institutions as unknown as { name: string; short_name: string | null; slug: string }), id: m.institution_id }
+                        : null,
                 })),
             };
         })
