@@ -126,14 +126,14 @@ export function DesktopNav({ user }: DesktopNavProps) {
 
                         {user ? (
                             <>
-                                {/* Create post */}
+                                {/* Campus ERP */}
                                 <Button
                                     variant="ghost"
                                     size="icon"
                                     className="h-9 w-9 rounded-xl text-muted-foreground hover:text-primary"
                                     asChild
                                 >
-                                    <Link href="/auth/institution-login">
+                                    <Link href="/campus">
                                         <Building2 className="h-4 w-4" />
                                     </Link>
                                 </Button>

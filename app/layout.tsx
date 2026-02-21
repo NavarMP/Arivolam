@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SmoothScrollProvider } from '@/components/providers/smooth-scroll-provider';
 import { Toaster } from '@/components/ui/toaster';
+import { GlobalFooter } from '@/components/shared/global-footer';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -33,7 +34,10 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <SmoothScrollProvider>
-            {children}
+            <div className="flex min-h-screen flex-col">
+              <main className="flex-1">{children}</main>
+              <GlobalFooter />
+            </div>
           </SmoothScrollProvider>
           <Toaster />
         </ThemeProvider>

@@ -70,41 +70,65 @@ export async function updateSession(request: NextRequest) {
 
     // ─── Campus route protection ───
     if (pathname.startsWith('/campus/')) {
-        if (!user) {
-            const url = request.nextUrl.clone()
-            url.pathname = '/auth/login'
-            url.searchParams.set('next', pathname)
-            return NextResponse.redirect(url)
-        }
-
         // Extract institution slug from URL: /campus/[slug]/...
         const slugMatch = pathname.match(/^\/campus\/([^/]+)/)
         if (slugMatch) {
             const slug = slugMatch[1]
 
-            // Check institution membership
-            const { data: institution } = await supabase
-                .from('institutions')
-                .select('id')
-                .eq('slug', slug)
-                .single()
+            // 1. Check Custom ERP Session (jose)
+            const { getSession } = await import('@/lib/auth')
+            const erpSession = await getSession()
 
-            if (institution) {
-                const { data: membership } = await supabase
-                    .from('institution_members')
+            let hasAccess = false;
+
+            if (erpSession) {
+                // Verify the session belongs to this institution
+                const { data: instCheck } = await supabase
+                    .from('institutions')
                     .select('id')
-                    .eq('user_id', user.id)
-                    .eq('institution_id', institution.id)
-                    .eq('is_active', true)
+                    .eq('slug', slug)
                     .single()
 
-                if (!membership) {
-                    // Not a member — redirect to institution login
-                    const url = request.nextUrl.clone()
-                    url.pathname = '/auth/institution-login'
-                    return NextResponse.redirect(url)
+                if (instCheck && instCheck.id === erpSession.institution_id) {
+                    hasAccess = true;
                 }
             }
+
+            // 2. Fallback to Supabase Auth Session
+            if (!hasAccess && user) {
+                const { data: institution } = await supabase
+                    .from('institutions')
+                    .select('id')
+                    .eq('slug', slug)
+                    .single()
+
+                if (institution) {
+                    const { data: membership } = await supabase
+                        .from('institution_members')
+                        .select('id')
+                        .eq('user_id', user.id)
+                        .eq('institution_id', institution.id)
+                        .eq('is_active', true)
+                        .single()
+
+                    if (membership) {
+                        hasAccess = true;
+                    }
+                }
+            }
+
+            if (!hasAccess) {
+                // Not a member — redirect to institution login
+                const url = request.nextUrl.clone()
+                url.pathname = '/auth/institution-login'
+                return NextResponse.redirect(url)
+            }
+        } else if (!user) {
+            // No slug, just /campus. Require Arivolam login.
+            const url = request.nextUrl.clone()
+            url.pathname = '/auth/login'
+            url.searchParams.set('next', pathname)
+            return NextResponse.redirect(url)
         }
     }
 

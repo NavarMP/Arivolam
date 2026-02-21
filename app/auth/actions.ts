@@ -52,13 +52,18 @@ export async function signup(formData: FormData) {
 }
 
 // ─── OAuth Login ───
-export async function loginWithOAuth(provider: 'google' | 'github' | 'facebook' | 'apple') {
+export async function loginWithOAuth(provider: 'google' | 'github' | 'facebook' | 'apple', nextUrl: string = '/') {
     const supabase = await createClient()
+
+    let callbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`
+    if (nextUrl !== '/') {
+        callbackUrl += `?next=${encodeURIComponent(nextUrl)}`
+    }
 
     const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-            redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
+            redirectTo: callbackUrl,
         },
     })
 
@@ -96,14 +101,27 @@ export async function institutionLogin(formData: FormData) {
         .single()
 
     if (enrollError || !enrollment) {
-        return { error: 'Invalid credentials. Please check your register number, admission number, or username.' }
+        return { error: 'Invalid credentials. Please check your institution, username, or password.' }
     }
 
-    // Check if already linked to current user
+    // Verify Password
+    // If there is no password hash, the enrollment hasn't been set up with one yet.
+    if (!enrollment.password_hash) {
+        return { error: 'Your account requires a password reset. Please contact administration.' }
+    }
+
+    const bcrypt = await import('bcryptjs')
+    const isValid = await bcrypt.compare(password, enrollment.password_hash)
+
+    if (!isValid) {
+        return { error: 'Invalid credentials. Please check your username and password.' }
+    }
+
+    // Check if user is also logged into Arivolam
     const { data: { user } } = await supabase.auth.getUser()
 
     if (user) {
-        // User is already logged into Arivolam — link enrollment
+        // User is logged into Arivolam — link enrollment if not claimed
         if (!enrollment.is_claimed) {
             await supabase
                 .from('enrollments')
@@ -122,19 +140,26 @@ export async function institutionLogin(formData: FormData) {
                     department: enrollment.department,
                 })
         }
-
-        // Get institution slug for redirect
-        const { data: institution } = await supabase
-            .from('institutions')
-            .select('slug')
-            .eq('id', institutionId)
-            .single()
-
-        revalidatePath('/', 'layout')
-        redirect(`/campus/${institution?.slug || 'sias'}`)
     }
 
-    return { error: 'Please log in to Arivolam first before accessing an institution.' }
+    // Create custom ERP Session
+    const { createSession } = await import('@/lib/auth')
+    await createSession({
+        enrollment_id: enrollment.id,
+        institution_id: institutionId,
+        role: enrollment.role,
+        identifier: identifier,
+    })
+
+    // Get institution slug for redirect
+    const { data: institution } = await supabase
+        .from('institutions')
+        .select('slug')
+        .eq('id', institutionId)
+        .single()
+
+    revalidatePath('/', 'layout')
+    redirect(`/campus/${institution?.slug || 'sias'}`)
 }
 
 // ─── Get User Institutions ───

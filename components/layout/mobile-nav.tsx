@@ -16,7 +16,7 @@ const navItems = [
     { href: "/", icon: Home, label: "Feed" },
     { href: "/explore", icon: Compass, label: "Explore" },
     { href: "/create", icon: Plus, label: "Create", isAction: true },
-    { href: "/about", icon: Building2, label: "About" },
+    { href: "/campus", icon: Building2, label: "Campus" },
 ];
 
 export function MobileNav({ user }: MobileNavProps) {
