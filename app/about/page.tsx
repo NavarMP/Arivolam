@@ -104,9 +104,11 @@ export default function AboutPage() {
             // Section reveals
             sectionRefs.current.forEach((section) => {
                 if (!section) return;
-                gsap.from(section.querySelectorAll(".reveal"), {
-                    y: 40,
-                    opacity: 0,
+                const reveals = section.querySelectorAll(".reveal");
+                gsap.set(reveals, { y: 40, opacity: 0 }); // set initial state immediately, no flash
+                gsap.to(reveals, {
+                    y: 0,
+                    opacity: 1,
                     stagger: 0.1,
                     duration: 0.6,
                     ease: "power3.out",
@@ -143,8 +145,8 @@ export default function AboutPage() {
                 </div>
 
                 <div className="relative z-10">
-                    <div className="hero-logo mx-auto mb-6">
-                        <AdaptiveLogo size={100} />
+                    <div className="hero-logo flex justify-center mb-6">
+                        <AdaptiveLogo size={400} />
                     </div>
                     <h1 className="hero-title mb-4 text-5xl font-bold tracking-tight sm:text-7xl">
                         Arivolam
