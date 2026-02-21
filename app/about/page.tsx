@@ -29,19 +29,19 @@ const team = [
     {
         name: "Muhammed Navar",
         role: "Architect",
-        avatar: "https://api.dicebear.com/9.x/notionists/svg?seed=Navar&backgroundColor=b6e3f4",
+        avatar: "https://api.dicebear.com/9.x/notionists/svg?hair=hat&lips=variant17&seed=Navar&backgroundColor=b6e3f4",
         bio: "System design, platform architecture, and full-stack development",
     },
     {
         name: "Muhammed Rabeeh",
         role: "Catalyst",
-        avatar: "https://api.dicebear.com/9.x/notionists/svg?seed=Rabeeh&backgroundColor=c0aede",
+        avatar: "https://api.dicebear.com/9.x/notionists/svg?hair=variant06&nose=variant13&seed=Rabeeh&backgroundColor=c0aede",
         bio: "Driving innovation and energizing the team forward",
     },
     {
         name: "Muhammed H",
         role: "Visionary",
-        avatar: "https://api.dicebear.com/9.x/notionists/svg?seed=MuhammedH&backgroundColor=ffd5dc",
+        avatar: "https://api.dicebear.com/9.x/notionists/svg?glasses=variant01&body=variant07&seed=MuhammedH&backgroundColor=ffd5dc",
         bio: "Future vision, product direction, and creative strategy",
     },
     {
@@ -266,24 +266,25 @@ export default function AboutPage() {
                     <p className="text-sm text-muted-foreground">The minds behind Arivolam</p>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    {team.map((member, i) => (
-                        <motion.div
-                            key={member.name}
-                            className="reveal group flex flex-col items-center rounded-2xl border border-border/40 bg-card p-6 text-center transition-all hover:border-primary/30 hover:shadow-lg"
-                            whileHover={{ y: -4 }}
-                        >
-                            <div className="mb-4 h-20 w-20 overflow-hidden rounded-2xl border-2 border-border/40 shadow-sm transition-shadow group-hover:shadow-md">
-                                <img
-                                    src={member.avatar}
-                                    alt={member.name}
-                                    className="h-full w-full object-cover"
-                                />
+                    {team.map((member, i) => {
+                        return (
+                            <div
+                                key={member.name}
+                                className="reveal hover-lift group flex flex-col items-center rounded-2xl border border-border/40 bg-card p-6 text-center"
+                            >
+                                <div className="mb-4 h-20 w-20 overflow-hidden rounded-2xl border-2 border-border/40 shadow-sm transition-shadow group-hover:shadow-md">
+                                    <img
+                                        src={member.avatar}
+                                        alt={member.name}
+                                        className="h-full w-full object-cover"
+                                    />
+                                </div>
+                                <h3 className="text-sm font-bold">{member.name}</h3>
+                                <p className="mb-1 text-xs font-semibold text-primary">{member.role}</p>
+                                <p className="text-xs text-muted-foreground leading-relaxed">{member.bio}</p>
                             </div>
-                            <h3 className="text-sm font-bold">{member.name}</h3>
-                            <p className="mb-1 text-xs font-semibold text-primary">{member.role}</p>
-                            <p className="text-xs text-muted-foreground leading-relaxed">{member.bio}</p>
-                        </motion.div>
-                    ))}
+                        );
+                    })}
                 </div>
             </section>
 
@@ -304,20 +305,20 @@ export default function AboutPage() {
                     {roadmap.map((item, i) => (
                         <div key={item.phase} className="reveal relative flex gap-4 sm:gap-6">
                             <div className={`relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl sm:h-16 sm:w-16 ${item.status === "live"
-                                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
-                                    : item.status === "planned"
-                                        ? "bg-primary/15 text-primary"
-                                        : "bg-muted text-muted-foreground"
+                                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
+                                : item.status === "planned"
+                                    ? "bg-primary/15 text-primary"
+                                    : "bg-muted text-muted-foreground"
                                 }`}>
                                 <item.icon className="h-5 w-5 sm:h-6 sm:w-6" />
                             </div>
                             <div className="flex-1 rounded-xl border border-border/40 bg-card p-4 sm:p-5">
                                 <div className="flex items-center gap-2">
                                     <span className={`text-[10px] font-bold uppercase tracking-wider ${item.status === "live"
-                                            ? "text-primary"
-                                            : item.status === "planned"
-                                                ? "text-amber-500"
-                                                : "text-muted-foreground"
+                                        ? "text-primary"
+                                        : item.status === "planned"
+                                            ? "text-amber-500"
+                                            : "text-muted-foreground"
                                         }`}>
                                         {item.status === "live" ? "🟢 Live" : item.status === "planned" ? "🟡 Planned" : "💡 Concept"}
                                     </span>
