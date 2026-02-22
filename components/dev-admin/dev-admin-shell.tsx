@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -9,9 +10,17 @@ import {
     Users,
     ArrowLeft,
     Shield,
+    Menu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+} from "@/components/ui/sheet";
 
 interface DevAdminShellProps {
     children: React.ReactNode;
@@ -26,12 +35,79 @@ const NAV_ITEMS = [
 
 export function DevAdminShell({ children, user }: DevAdminShellProps) {
     const pathname = usePathname();
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+
+    const NavLinks = ({ onNavigate }: { onNavigate?: () => void }) => (
+        <>
+            {NAV_ITEMS.map((item) => {
+                const isActive =
+                    pathname === item.href ||
+                    (item.href !== "/dev-admin" &&
+                        pathname.startsWith(item.href));
+                return (
+                    <Link key={item.href} href={item.href} onClick={onNavigate}>
+                        <button
+                            className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${isActive
+                                ? "bg-primary/10 text-primary"
+                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                }`}
+                        >
+                            <item.icon className="h-4 w-4" />
+                            {item.label}
+                        </button>
+                    </Link>
+                );
+            })}
+        </>
+    );
 
     return (
         <div className="min-h-screen bg-background">
             {/* Top header */}
             <header className="sticky top-0 z-50 flex items-center justify-between border-b border-border/40 bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:px-6">
                 <div className="flex items-center gap-3">
+                    {/* Mobile hamburger */}
+                    <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+                        <SheetTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 rounded-full md:hidden"
+                            >
+                                <Menu className="h-4 w-4" />
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent side="left" className="w-64 p-0">
+                            <SheetHeader className="border-b border-border/40 px-4 py-4">
+                                <SheetTitle className="flex items-center gap-2 text-sm">
+                                    <Image
+                                        src="/assets/Logo.svg"
+                                        alt="Arivolam"
+                                        width={24}
+                                        height={24}
+                                        className="h-6 w-6"
+                                    />
+                                    Dev Admin
+                                    <span className="flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-bold text-destructive">
+                                        <Shield className="h-3 w-3" />
+                                        SUPER
+                                    </span>
+                                </SheetTitle>
+                            </SheetHeader>
+                            <nav className="space-y-1 p-3">
+                                <NavLinks onNavigate={() => setSidebarOpen(false)} />
+                            </nav>
+                            <div className="absolute bottom-0 left-0 right-0 border-t border-border/40 p-4">
+                                <p className="text-xs text-muted-foreground truncate">
+                                    {user.name}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground/60 truncate">
+                                    {user.email}
+                                </p>
+                            </div>
+                        </SheetContent>
+                    </Sheet>
+
                     <Link href="/">
                         <Button
                             variant="ghost"
@@ -46,13 +122,13 @@ export function DevAdminShell({ children, user }: DevAdminShellProps) {
                         alt="Arivolam"
                         width={28}
                         height={28}
-                        className="h-7 w-7"
+                        className="h-7 w-7 hidden md:block"
                     />
                     <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold">
                             Dev Admin
                         </span>
-                        <span className="flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-bold text-destructive">
+                        <span className="hidden items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-bold text-destructive sm:flex">
                             <Shield className="h-3 w-3" />
                             SUPER
                         </span>
@@ -68,56 +144,15 @@ export function DevAdminShell({ children, user }: DevAdminShellProps) {
             </header>
 
             <div className="flex">
-                {/* Sidebar (desktop) */}
+                {/* Sidebar (desktop only) */}
                 <aside className="hidden w-56 shrink-0 border-r border-border/40 md:block">
                     <nav className="sticky top-[57px] space-y-1 p-3">
-                        {NAV_ITEMS.map((item) => {
-                            const isActive =
-                                pathname === item.href ||
-                                (item.href !== "/dev-admin" &&
-                                    pathname.startsWith(item.href));
-                            return (
-                                <Link key={item.href} href={item.href}>
-                                    <button
-                                        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${isActive
-                                                ? "bg-primary/10 text-primary"
-                                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                            }`}
-                                    >
-                                        <item.icon className="h-4 w-4" />
-                                        {item.label}
-                                    </button>
-                                </Link>
-                            );
-                        })}
+                        <NavLinks />
                     </nav>
                 </aside>
 
                 {/* Main content */}
                 <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
-            </div>
-
-            {/* Bottom nav (mobile) */}
-            <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-border/40 bg-background/95 px-2 py-2 backdrop-blur md:hidden">
-                {NAV_ITEMS.map((item) => {
-                    const isActive =
-                        pathname === item.href ||
-                        (item.href !== "/dev-admin" &&
-                            pathname.startsWith(item.href));
-                    return (
-                        <Link key={item.href} href={item.href}>
-                            <button
-                                className={`flex flex-col items-center gap-1 rounded-lg px-3 py-1.5 text-[10px] font-medium transition-colors ${isActive
-                                        ? "text-primary"
-                                        : "text-muted-foreground"
-                                    }`}
-                            >
-                                <item.icon className="h-5 w-5" />
-                                {item.label}
-                            </button>
-                        </Link>
-                    );
-                })}
             </div>
         </div>
     );

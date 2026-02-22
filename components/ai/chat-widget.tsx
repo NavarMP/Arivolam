@@ -17,6 +17,7 @@ import {
     Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useScrollDirection } from "@/hooks/use-scroll-direction";
 
 // ─── Types ───
 interface ChatMessage {
@@ -79,6 +80,7 @@ export function AIChatWidget({ campusContext }: AIChatWidgetProps) {
     const [showQuickActions, setShowQuickActions] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+    const { isNavVisible } = useScrollDirection();
 
     // Scroll to bottom on new messages
     useEffect(() => {
@@ -177,7 +179,7 @@ export function AIChatWidget({ campusContext }: AIChatWidgetProps) {
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
                         onClick={() => setIsOpen(true)}
-                        className="fixed bottom-24 right-4 z-[60] flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/25 transition-shadow hover:shadow-xl hover:shadow-primary/30 md:bottom-6 md:right-6"
+                        className={`fixed bottom-24 right-4 z-[60] flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30 md:bottom-6 md:right-6 ${!isNavVisible ? 'translate-y-[calc(100%+6rem)] md:translate-y-[calc(100%+2rem)]' : ''}`}
                         aria-label="Open AI Assistant"
                     >
                         <Sparkles className="h-6 w-6" />

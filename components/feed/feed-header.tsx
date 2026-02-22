@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, Search, Building2, LogOut, User } from "lucide-react";
+import { Search, Building2, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AdaptiveLogo } from "@/components/shared/adaptive-logo";
+import { cn } from "@/lib/utils";
+import { useScrollDirection } from "@/hooks/use-scroll-direction";
+import { NotificationDropdown } from "@/components/shared/notification-dropdown";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -21,8 +24,13 @@ interface FeedHeaderProps {
 }
 
 export function FeedHeader({ user }: FeedHeaderProps) {
+    const { isNavVisible } = useScrollDirection();
+
     return (
-        <header className="fixed left-0 right-0 top-0 z-50 border-b border-border/30 bg-background/70 backdrop-blur-2xl">
+        <header className={cn(
+            "fixed left-0 right-0 top-0 z-50 border-b border-border/30 bg-background/70 backdrop-blur-2xl transition-transform duration-300",
+            !isNavVisible && "-translate-y-full"
+        )}>
             <div className="container mx-auto flex h-14 max-w-2xl items-center justify-between px-4">
                 {/* Logo */}
                 <Link href="/" className="flex items-center gap-2">
@@ -47,10 +55,7 @@ export function FeedHeader({ user }: FeedHeaderProps) {
                                     <Building2 className="h-4 w-4" />
                                 </Button>
                             </Link>
-                            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full relative">
-                                <Bell className="h-4 w-4" />
-                                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary" />
-                            </Button>
+                            <NotificationDropdown />
 
                             {/* User dropdown with sign-out */}
                             <DropdownMenu>

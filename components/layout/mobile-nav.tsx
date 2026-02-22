@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { AdaptiveLogo } from "@/components/shared/adaptive-logo";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { cn } from "@/lib/utils";
+import { useScrollDirection } from "@/hooks/use-scroll-direction";
 
 interface MobileNavProps {
     user: SupabaseUser | null;
@@ -21,6 +22,7 @@ const navItems = [
 
 export function MobileNav({ user }: MobileNavProps) {
     const pathname = usePathname();
+    const { isNavVisible } = useScrollDirection();
 
     const profileItem = user
         ? { href: `/profile/${user.id}`, icon: User, label: "Profile" }
@@ -29,7 +31,10 @@ export function MobileNav({ user }: MobileNavProps) {
     const allItems = [...navItems, profileItem];
 
     return (
-        <div className="fixed bottom-4 left-3 right-3 z-50 md:hidden">
+        <div className={cn(
+            "fixed bottom-4 left-3 right-3 z-50 md:hidden transition-transform duration-300",
+            !isNavVisible && "translate-y-[calc(100%+2rem)]"
+        )}>
             <motion.nav
                 initial={{ y: 100, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}

@@ -100,7 +100,7 @@ export default function CampusLandingPage() {
                             Arivolam Ecosystem
                         </span>
                         <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6">
-                            Campus <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-orange-400">ERP</span>
+                            Campus<span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-orange-400">olam</span>
                         </h1>
                         <p className="mt-4 max-w-2xl text-xl text-muted-foreground mx-auto mb-10">
                             The ultimate infrastructure for educational excellence. Built on top of the Arivolam Social network, experience futuristic tech like RFID tracking and intelligent navigation seamlessly integrated into one powerful platform.

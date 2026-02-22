@@ -36,7 +36,7 @@ export interface PostData {
         display_name: string;
         headline?: string;
         avatar_url?: string;
-    };
+    } | null;
     institution?: {
         name: string;
         slug: string;
@@ -61,6 +61,13 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, onReact, onSave }: PostCardProps) {
+    const author = post.author ?? {
+        id: "unknown",
+        username: "",
+        display_name: "Unknown User",
+        headline: undefined,
+        avatar_url: undefined,
+    };
     const [showReactions, setShowReactions] = useState(false);
     const [currentReaction, setCurrentReaction] = useState(post.user_reaction);
     const [isSaved, setIsSaved] = useState(post.is_saved || false);
@@ -93,32 +100,32 @@ export function PostCard({ post, onReact, onSave }: PostCardProps) {
         >
             {/* Author header */}
             <div className="flex items-start gap-3 p-4 pb-2">
-                <Link href={`/profile/${post.author.username || post.author.id}`}>
+                <Link href={`/profile/${author.username || author.id}`}>
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold text-sm ring-2 ring-background">
-                        {post.author.avatar_url ? (
+                        {author.avatar_url ? (
                             <img
-                                src={post.author.avatar_url}
-                                alt={post.author.display_name}
+                                src={author.avatar_url}
+                                alt={author.display_name}
                                 className="h-full w-full rounded-full object-cover"
                             />
                         ) : (
-                            post.author.display_name?.charAt(0).toUpperCase() || "U"
+                            author.display_name?.charAt(0).toUpperCase() || "U"
                         )}
                     </div>
                 </Link>
 
                 <div className="flex-1 min-w-0">
                     <Link
-                        href={`/profile/${post.author.username || post.author.id}`}
+                        href={`/profile/${author.username || author.id}`}
                         className="group"
                     >
                         <p className="text-sm font-semibold leading-tight group-hover:text-primary transition-colors">
-                            {post.author.display_name}
+                            {author.display_name}
                         </p>
                     </Link>
-                    {post.author.headline && (
+                    {author.headline && (
                         <p className="text-xs text-muted-foreground truncate mt-0.5">
-                            {post.author.headline}
+                            {author.headline}
                         </p>
                     )}
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">

@@ -8,11 +8,11 @@ export default async function FeedPage() {
     const { data: { user } } = await supabase.auth.getUser();
 
     // Fetch posts with author profile
-    const { data: posts } = await supabase
+    const { data: posts, error: postsError } = await supabase
         .from("posts")
         .select(`
             *,
-            author:author_id (
+            author:arivolam_profiles!posts_author_id_fkey (
                 id,
                 username,
                 display_name,
@@ -28,6 +28,10 @@ export default async function FeedPage() {
         .eq("visibility", "public")
         .order("created_at", { ascending: false })
         .limit(20);
+
+    if (postsError) {
+        console.error("Feed posts fetch error:", postsError);
+    }
 
     // Fetch institutions for discovery
     const { data: institutions } = await supabase

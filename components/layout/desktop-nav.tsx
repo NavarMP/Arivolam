@@ -7,12 +7,13 @@ import {
     Home,
     Compass,
     Building2,
-    Bell,
+    Moon,
+    Sun,
     LogOut,
     User,
+    ChevronDown,
+    Shield,
     Settings,
-    Search,
-    Plus,
     Info,
     Mail,
 } from "lucide-react";
@@ -30,7 +31,9 @@ import { AdaptiveLogo } from "@/components/shared/adaptive-logo";
 import { signOut } from "@/app/auth/actions";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useScrollDirection } from "@/hooks/use-scroll-direction";
+import { NotificationDropdown } from "@/components/shared/notification-dropdown";
+import { SearchCommand } from "@/components/shared/search-command";
 
 interface DesktopNavProps {
     user: SupabaseUser | null;
@@ -45,10 +48,13 @@ const navLinks = [
 
 export function DesktopNav({ user }: DesktopNavProps) {
     const pathname = usePathname();
-    const [searchFocused, setSearchFocused] = useState(false);
+    const { isNavVisible } = useScrollDirection();
 
     return (
-        <header className="fixed left-0 right-0 top-0 z-50 hidden md:block">
+        <header className={cn(
+            "fixed left-0 right-0 top-0 z-50 hidden md:block transition-transform duration-300",
+            !isNavVisible && "-translate-y-full"
+        )}>
             {/* Glassmorphism nav bar */}
             <div className="mx-auto max-w-6xl px-6 pt-4">
                 <nav className="flex items-center justify-between rounded-2xl border border-border/20 bg-background/60 px-6 py-3 shadow-lg shadow-black/[0.03] backdrop-blur-2xl dark:border-border/10 dark:bg-background/40 dark:shadow-black/10">
@@ -102,27 +108,8 @@ export function DesktopNav({ user }: DesktopNavProps) {
 
                     {/* Right: Search + Actions */}
                     <div className="flex items-center gap-2">
-                        {/* Search pill */}
-                        <motion.div
-                            className={cn(
-                                "flex items-center gap-2 rounded-xl border border-border/40 bg-muted/30 px-3 py-1.5 transition-all",
-                                searchFocused && "border-primary/40 bg-background shadow-sm ring-1 ring-primary/10"
-                            )}
-                            animate={{ width: searchFocused ? 220 : 160 }}
-                            transition={{ duration: 0.2 }}
-                        >
-                            <Search className="h-3.5 w-3.5 text-muted-foreground" />
-                            <input
-                                type="text"
-                                placeholder="Search..."
-                                className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
-                                onFocus={() => setSearchFocused(true)}
-                                onBlur={() => setSearchFocused(false)}
-                            />
-                            <kbd className="hidden rounded border border-border/60 bg-muted px-1 py-0.5 text-[10px] font-medium text-muted-foreground lg:inline">
-                                ⌘K
-                            </kbd>
-                        </motion.div>
+                        {/* Search (Command Palette) */}
+                        <SearchCommand />
 
                         {user ? (
                             <>
@@ -139,14 +126,7 @@ export function DesktopNav({ user }: DesktopNavProps) {
                                 </Button>
 
                                 {/* Notifications */}
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="relative h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground"
-                                >
-                                    <Bell className="h-4 w-4" />
-                                    <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary ring-2 ring-background" />
-                                </Button>
+                                <NotificationDropdown />
 
                                 <ThemeToggle />
 
