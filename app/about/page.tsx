@@ -18,6 +18,10 @@ import {
     Box,
     Compass,
     ArrowRight,
+    Layers,
+    Triangle,
+    Circle,
+    Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdaptiveLogo } from "@/components/shared/adaptive-logo";
@@ -213,45 +217,146 @@ export default function AboutPage() {
                 </div>
             </section>
 
-            {/* Logo & Colors */}
+            {/* Anatomy of the Logo & Brand Identity */}
             <section
                 ref={(el) => { sectionRefs.current[2] = el; }}
-                className="container mx-auto max-w-4xl px-4 py-16"
+                className="flex flex-col gap-8 container mx-auto max-w-5xl px-4 py-16"
             >
-                <div className="reveal mb-8 text-center">
-                    <Palette className="mx-auto mb-2 h-5 w-5 text-primary" />
-                    <h2 className="text-2xl font-bold">Brand Identity</h2>
+                <div className="reveal mb-12 text-center">
+                    <Layers className="mx-auto mb-3 h-6 w-6 text-primary" />
+                    <h2 className="text-3xl font-bold tracking-tight">Brand Identity & Logo Anatomy</h2>
+                    <p className="mt-2 text-sm text-muted-foreground">The meaning behind the shapes, colors, and structure of Arivolam.</p>
                 </div>
-                <div className="reveal rounded-2xl border border-border/40 bg-card p-6 sm:p-8">
-                    <div className="flex flex-col items-center gap-8 sm:flex-row">
-                        {/* Logo showcase */}
-                        <div className="flex flex-col items-center gap-4">
-                            <div className="rounded-2xl bg-white p-6 shadow-inner dark:bg-gray-900">
-                                <AdaptiveLogo size={80} />
+
+                <div className="flex flex-col gap-8 lg:flex-row lg:gap-12 lg:items-stretch">
+                    {/* Visual Side */}
+                    <div className="flex w-full flex-col lg:w-5/12">
+                        {/* Structure Image */}
+                        <div className="reveal relative flex items-center justify-center rounded-3xl border border-border/40 bg-white p-8 overflow-hidden dark:bg-[#e4ebf1] h-full">
+                            <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:16px_16px]" />
+                            <div className="relative z-10 w-full transition-transform duration-700 hover:scale-105">
+                                <img src="/assets/Logo Structure.svg" alt="Logo Structure" className="w-full h-auto drop-shadow-xl" />
                             </div>
-                            <p className="text-xs text-muted-foreground">Dynamic theme-adaptive SVG</p>
+                        </div>
+                    </div>
+
+                    {/* Content Side */}
+                    <div className="flex w-full flex-col gap-6 lg:w-7/12 h-full">
+                        {/* Literal Representation */}
+                        <div className="reveal rounded-3xl border border-border/40 bg-card p-6 sm:p-8">
+                            <h3 className="mb-5 text-lg font-bold flex items-center gap-3">
+                                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                    <p className="font-serif italic text-xl font-bold">A</p>
+                                </span>
+                                Literal Representation: A + O
+                            </h3>
+                            <div className="space-y-5">
+                                <div className="flex gap-4">
+                                    <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/10">
+                                        <Triangle className="h-4 w-4 text-primary" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold">The "A" (അറിവ് / Ariv) - Knowledge</h4>
+                                        <p className="text-sm text-muted-foreground mt-1 leading-relaxed">The top dark blue chevron (the upward-pointing triangle) serves as the stylized letter "A." It forms the peak or the structural foundation of the top half.</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-4">
+                                    <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/10">
+                                        <Circle className="h-4 w-4 text-primary" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold">The "O" (ഓളം / Olam) - Wave</h4>
+                                        <p className="text-sm text-muted-foreground mt-1 leading-relaxed">The bottom dark blue rounded oval represents the letter "O," grounding the logo.</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Color palette */}
-                        <div className="flex-1">
-                            <h3 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                                Color Palette
+                        {/* Symbolic Meaning */}
+                        <div className="reveal rounded-3xl border border-border/40 bg-card p-6 sm:p-8">
+                            <h3 className="mb-5 text-lg font-bold flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10">
+                                    <Zap className="h-5 w-5 text-orange-500" />
+                                </div>
+                                The Symbolic Meaning
                             </h3>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid gap-6 sm:grid-cols-2">
+                                <div className="space-y-2">
+                                    <h4 className="text-sm font-bold flex items-center gap-2"><ArrowRight className="h-4 w-4 text-primary" /> Horizon & Peak</h4>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">The "A" shape mimics a mountain peak or horizon, connecting to "The horizon of learning." It points upward, symbolizing growth, aspiration, and academic elevation.</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <h4 className="text-sm font-bold flex items-center gap-2"><ArrowRight className="h-4 w-4 text-orange-500" /> Wave of Knowledge</h4>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">The orange curve visually disrupts the rigid blue triangle with a dynamic, flowing shape, representing a continuous, moving wave of learning.</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <h4 className="text-sm font-bold flex items-center gap-2"><ArrowRight className="h-4 w-4 text-orange-500" /> Community Connect</h4>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">The curve strongly resembles a welcoming smile or open arms, injecting human connection and a student community feel into the ERP system.</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <h4 className="text-sm font-bold flex items-center gap-2"><ArrowRight className="h-4 w-4 text-primary" /> The Closed Loop</h4>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">The solid "O" base forms a sturdy foundation or continuous loop, representing the "all-in-one" enclosed campus ecosystem bringing ERP and social together.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex flex-col gap-8 lg:flex-row lg:gap-12">
+                    {/* Standard Logo & Colors */}
+                    <div className="reveal flex flex-col gap-6 rounded-3xl border border-border/40 bg-card p-6">
+                        <div className="flex items-center gap-4">
+                            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white p-3 shadow-inner dark:bg-gray-900 border border-border/50">
+                                <AdaptiveLogo size={40} />
+                            </div>
+                            <div className="space-y-1">
+                                <h3 className="text-sm font-bold">Standard Mark</h3>
+                                <p className="text-[10px] text-muted-foreground leading-tight">Dynamic theme-adaptive SVG used across the platform.</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3">
+                            <h4 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                <Palette className="h-3 w-3" /> Color Palette
+                            </h4>
+                            <div className="grid grid-cols-2 gap-2">
                                 {brandColors.map((color) => (
                                     <motion.div
                                         key={color.hex}
-                                        whileHover={{ scale: 1.03 }}
-                                        className="group cursor-pointer rounded-xl border border-border/30 p-3 transition-shadow hover:shadow-md"
+                                        whileHover={{ scale: 1.02 }}
+                                        className="group flex flex-col cursor-pointer rounded-xl border border-border/30 p-2 transition-shadow hover:shadow-md"
                                     >
-                                        <div
-                                            className="mb-2 h-10 w-full rounded-lg"
-                                            style={{ backgroundColor: color.hex }}
-                                        />
-                                        <p className="text-xs font-semibold">{color.name}</p>
-                                        <p className="text-[10px] text-muted-foreground font-mono">{color.hex}</p>
+                                        <div className="mb-2 h-8 w-full rounded-lg border border-black/5 dark:border-white/5" style={{ backgroundColor: color.hex }} />
+                                        <p className="text-[10px] font-bold">{color.name}</p>
+                                        <p className="text-[9px] text-muted-foreground font-mono">{color.hex}</p>
                                     </motion.div>
                                 ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Color Psychology */}
+                    <div className="reveal rounded-3xl border border-border/40 bg-card p-6 sm:p-8">
+                        <h3 className="mb-5 text-lg font-bold flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+                                <Palette className="h-5 w-5 text-primary" />
+                            </div>
+                            Color Psychology
+                        </h3>
+                        <div className="space-y-5">
+                            <div className="flex items-center gap-4 border-b border-border/50 pb-4">
+                                <div className="h-12 w-12 shrink-0 rounded-full bg-[#012d49] shadow-[0_0_15px_rgba(1,45,73,0.3)] shadow-inner" />
+                                <div>
+                                    <h4 className="text-sm font-bold">Dark Blue</h4>
+                                    <p className="text-sm text-muted-foreground">Traditionally represents trust, intelligence, stability, and technology. It grounds the logo, reflecting the reliability needed for an ERP system.</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-4 pt-1">
+                                <div className="h-12 w-12 shrink-0 rounded-full bg-[#ef8119] shadow-[0_0_15px_rgba(239,129,25,0.3)] shadow-inner" />
+                                <div>
+                                    <h4 className="text-sm font-bold">Vibrant Orange</h4>
+                                    <p className="text-sm text-muted-foreground">Represents energy, enthusiasm, youth, and creativity. It highlights the dynamic, social, and engaging side of campus life.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
