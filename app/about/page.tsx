@@ -22,6 +22,13 @@ import {
     Triangle,
     Circle,
     Zap,
+    Smartphone,
+    Users,
+    Calendar,
+    PieChart,
+    Activity,
+    Building2,
+    Network,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdaptiveLogo } from "@/components/shared/adaptive-logo";
@@ -363,9 +370,103 @@ export default function AboutPage() {
                 </div>
             </section>
 
-            {/* Team */}
+            {/* Our Initiatives */}
             <section
                 ref={(el) => { sectionRefs.current[3] = el; }}
+                className="container mx-auto max-w-5xl px-4 py-16"
+            >
+                <div className="reveal mb-12 text-center">
+                    <Network className="mx-auto mb-3 h-6 w-6 text-primary" />
+                    <h2 className="text-3xl font-bold tracking-tight">Our Primary Initiatives</h2>
+                    <p className="mt-2 text-sm text-muted-foreground">Bridging social connection and campus management into one unified platform.</p>
+                </div>
+
+                <div className="grid gap-8 lg:grid-cols-2">
+                    {/* Ariv Social */}
+                    <div className="reveal hover-lift flex flex-col justify-between overflow-hidden rounded-3xl border border-border/40 bg-card/50 backdrop-blur-sm p-8 transition-shadow hover:shadow-xl hover:shadow-primary/5">
+                        <div className="mb-8">
+                            <div className="mb-6 flex h-16 items-center justify-center rounded-2xl bg-white px-4 shadow-sm dark:bg-[#e4ebf1] border border-border/50 self-start w-fit">
+                                <img src="/assets/Ariv Social Logo.svg" alt="Ariv Social" className="h-8 w-auto object-contain" />
+                            </div>
+                            <h3 className="mb-3 text-2xl font-bold">Ariv Social</h3>
+                            <p className="mb-6 text-sm leading-relaxed text-muted-foreground">
+                                The Social Network for Academia. A dedicated space to connect, share ideas, and engage deeply with your campus community.
+                            </p>
+
+                            <ul className="space-y-4">
+                                <li className="flex items-center gap-3">
+                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/10">
+                                        <Smartphone className="h-4 w-4 text-primary" />
+                                    </div>
+                                    <span className="text-sm font-medium">Centralized Social Feed</span>
+                                </li>
+                                <li className="flex items-center gap-3">
+                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/10">
+                                        <Users className="h-4 w-4 text-primary" />
+                                    </div>
+                                    <span className="text-sm font-medium">Interactive Student & Alumni Profiles</span>
+                                </li>
+                                <li className="flex items-center gap-3">
+                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/10">
+                                        <Calendar className="h-4 w-4 text-primary" />
+                                    </div>
+                                    <span className="text-sm font-medium">Clubs, Events, & Community Groups</span>
+                                </li>
+                            </ul>
+                        </div>
+                        <Link href="/">
+                            <Button className="w-full gap-2 rounded-xl group" variant="secondary">
+                                Explore Ariv Social
+                                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                            </Button>
+                        </Link>
+                    </div>
+
+                    {/* Campusolam */}
+                    <div className="reveal hover-lift flex flex-col justify-between overflow-hidden rounded-3xl border border-border/40 bg-card/50 backdrop-blur-sm p-8 transition-shadow hover:shadow-xl hover:shadow-orange-500/5">
+                        <div className="mb-8">
+                            <div className="mb-6 flex h-16 items-center justify-center rounded-2xl bg-white px-4 shadow-sm dark:bg-[#e4ebf1] border border-border/50 self-start w-fit">
+                                <img src="/assets/Campusolam Logo.svg" alt="Campusolam" className="h-8 w-auto object-contain" />
+                            </div>
+                            <h3 className="mb-3 text-2xl font-bold">Campusolam</h3>
+                            <p className="mb-6 text-sm leading-relaxed text-muted-foreground">
+                                The Next-Gen Campus ERP. Streamline your institution's management with smart, interconnected tools designed for modern campuses.
+                            </p>
+
+                            <ul className="space-y-4">
+                                <li className="flex items-center gap-3">
+                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/10">
+                                        <PieChart className="h-4 w-4 text-orange-500" />
+                                    </div>
+                                    <span className="text-sm font-medium">Role-based Dashboards</span>
+                                </li>
+                                <li className="flex items-center gap-3">
+                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/10">
+                                        <Activity className="h-4 w-4 text-orange-500" />
+                                    </div>
+                                    <span className="text-sm font-medium">Real-time Smart Attendance</span>
+                                </li>
+                                <li className="flex items-center gap-3">
+                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/10">
+                                        <Building2 className="h-4 w-4 text-orange-500" />
+                                    </div>
+                                    <span className="text-sm font-medium">Unified Institution Controls</span>
+                                </li>
+                            </ul>
+                        </div>
+                        <Link href="/campus">
+                            <Button className="w-full gap-2 rounded-xl group hover:bg-orange-500 hover:text-white" variant="outline">
+                                Discover Campusolam
+                                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                            </Button>
+                        </Link>
+                    </div>
+                </div>
+            </section>
+
+            {/* Team */}
+            <section
+                ref={(el) => { sectionRefs.current[4] = el; }}
                 className="container mx-auto max-w-4xl px-4 py-16"
             >
                 <div className="reveal mb-8 text-center">
@@ -397,7 +498,7 @@ export default function AboutPage() {
 
             {/* Future Roadmap */}
             <section
-                ref={(el) => { sectionRefs.current[4] = el; }}
+                ref={(el) => { sectionRefs.current[5] = el; }}
                 className="container mx-auto max-w-3xl px-4 py-16"
             >
                 <div className="reveal mb-8 text-center">

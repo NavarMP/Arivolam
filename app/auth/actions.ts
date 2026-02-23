@@ -74,7 +74,7 @@ export async function loginWithOAuth(provider: 'google' | 'github' | 'facebook' 
     }
 
     if (data.url) {
-        redirect(data.url)
+        return { url: data.url }
     }
 }
 

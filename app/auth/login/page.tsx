@@ -46,7 +46,12 @@ export default function LoginPage() {
     }
 
     async function handleOAuth(provider: "google" | "github") {
-        await loginWithOAuth(provider);
+        const res = await loginWithOAuth(provider);
+        if (res?.error) {
+            setError(res.error);
+        } else if (res?.url) {
+            window.location.href = res.url;
+        }
     }
 
     return (
