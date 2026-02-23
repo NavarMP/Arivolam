@@ -70,6 +70,16 @@ export async function updateSession(request: NextRequest) {
 
     // ─── Campus route protection ───
     if (pathname.startsWith('/campus/')) {
+        // Public campus routes that don't require auth
+        const campusPublicRoutes = ['/campus/login', '/campus/signup', '/campus/create']
+        const isCampusPublic = campusPublicRoutes.some(route =>
+            pathname === route || pathname.startsWith(`${route}/`)
+        )
+
+        if (isCampusPublic) {
+            return supabaseResponse
+        }
+
         // Extract institution slug from URL: /campus/[slug]/...
         const slugMatch = pathname.match(/^\/campus\/([^/]+)/)
         if (slugMatch) {
@@ -118,17 +128,11 @@ export async function updateSession(request: NextRequest) {
             }
 
             if (!hasAccess) {
-                // Not a member — redirect to institution login
+                // Not a member — redirect to campus login
                 const url = request.nextUrl.clone()
-                url.pathname = '/auth/institution-login'
+                url.pathname = '/campus/login'
                 return NextResponse.redirect(url)
             }
-        } else if (!user) {
-            // No slug, just /campus. Require Arivolam login.
-            const url = request.nextUrl.clone()
-            url.pathname = '/auth/login'
-            url.searchParams.set('next', pathname)
-            return NextResponse.redirect(url)
         }
     }
 

@@ -49,3 +49,81 @@ export async function updateUserRole(
     revalidatePath(`/campus/${institutionSlug}/admin/users`);
     return { success: true };
 }
+
+// ─── Approve Enrollment ───
+export async function approveEnrollment(enrollmentId: string, institutionSlug: string) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "Unauthorized" };
+
+    const { data: institution } = await supabase
+        .from("institutions")
+        .select("id")
+        .eq("slug", institutionSlug)
+        .single();
+
+    if (!institution) return { error: "Institution not found" };
+
+    // Verify admin
+    const { data: membership } = await supabase
+        .from("institution_members")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("institution_id", institution.id)
+        .single();
+
+    if (membership?.role !== "admin") {
+        return { error: "Forbidden: Only admins can approve enrollments" };
+    }
+
+    // Update enrollment
+    const { error } = await supabase
+        .from("enrollments")
+        .update({ is_approved: true })
+        .eq("id", enrollmentId)
+        .eq("institution_id", institution.id);
+
+    if (error) return { error: error.message };
+
+    revalidatePath(`/campus/${institutionSlug}/admin/users`);
+    return { success: true };
+}
+
+// ─── Reject Enrollment ───
+export async function rejectEnrollment(enrollmentId: string, institutionSlug: string) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "Unauthorized" };
+
+    const { data: institution } = await supabase
+        .from("institutions")
+        .select("id")
+        .eq("slug", institutionSlug)
+        .single();
+
+    if (!institution) return { error: "Institution not found" };
+
+    // Verify admin
+    const { data: membership } = await supabase
+        .from("institution_members")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("institution_id", institution.id)
+        .single();
+
+    if (membership?.role !== "admin") {
+        return { error: "Forbidden: Only admins can reject enrollments" };
+    }
+
+    // Delete enrollment
+    const { error } = await supabase
+        .from("enrollments")
+        .delete()
+        .eq("id", enrollmentId)
+        .eq("institution_id", institution.id);
+
+    if (error) return { error: error.message };
+
+    revalidatePath(`/campus/${institutionSlug}/admin/users`);
+    return { success: true };
+}

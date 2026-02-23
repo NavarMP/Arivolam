@@ -50,7 +50,7 @@ export function FeedHeader({ user }: FeedHeaderProps) {
 
                     {user ? (
                         <>
-                            <Link href="/auth/institution-login">
+                            <Link href="/campus/login">
                                 <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full">
                                     <Building2 className="h-4 w-4" />
                                 </Button>

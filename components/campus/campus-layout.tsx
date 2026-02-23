@@ -2,7 +2,6 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import {
     Home,
     Compass,
@@ -11,7 +10,9 @@ import {
     LayoutGrid,
     User,
     ArrowLeft,
-    Building2,
+    ShieldCheck,
+    GraduationCap,
+    Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -39,14 +40,26 @@ interface CampusLayoutProps {
 export function CampusLayout({ children, institution, userRole, slug, campusContext }: CampusLayoutProps) {
     const pathname = usePathname();
 
+    // Base dock items for everyone
     const dockItems: DockItem[] = [
         { title: "Dashboard", icon: Home, href: `/campus/${slug}` },
         { title: "Campus Map", icon: Compass, href: `/campus/${slug}/map` },
         { title: "Academics", icon: BookOpen, href: `/campus/${slug}/academics` },
         { title: "Calendar", icon: Calendar, href: `/campus/${slug}/calendar` },
         { title: "Apps", icon: LayoutGrid, href: `/campus/${slug}/apps` },
-        { title: "Profile", icon: User, href: `/campus/${slug}/profile` },
     ];
+
+    // Role-based dock items
+    if (userRole === "admin") {
+        dockItems.push({ title: "Admin", icon: ShieldCheck, href: `/campus/${slug}/admin` });
+    } else if (userRole === "staff") {
+        dockItems.push({ title: "Teaching", icon: GraduationCap, href: `/campus/${slug}/teacher` });
+    } else if (userRole === "parent") {
+        dockItems.push({ title: "My Child", icon: Users, href: `/campus/${slug}/parent` });
+    }
+
+    // Profile always last
+    dockItems.push({ title: "Profile", icon: User, href: `/campus/${slug}/profile` });
 
     return (
         <div className="relative min-h-screen bg-background pb-24">
@@ -56,7 +69,7 @@ export function CampusLayout({ children, institution, userRole, slug, campusCont
             {/* Header */}
             <header className="sticky top-0 z-50 flex items-center justify-between border-b border-border/40 bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:px-6">
                 <div className="flex items-center gap-3">
-                    <Link href="/">
+                    <Link href="/campus">
                         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
                             <ArrowLeft className="h-4 w-4" />
                         </Button>

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { erpUniversalLogin } from "@/app/campus/actions";
+import { campusLogin } from "@/app/campus/actions";
 import { cn } from "@/lib/utils";
 import { useClickAway } from "react-use";
 
@@ -93,20 +93,20 @@ export function UniversalLoginForm() {
             formData.append("identifier", identifier);
             formData.append("password", password);
 
-            const result = await erpUniversalLogin(formData);
+            const result = await campusLogin(formData);
 
             if (result?.error) {
                 toast.error(result.error);
                 return;
             }
 
-            toast.success("Welcome back to your Campus!");
-
-            // Artificial delay for smooth UX transition
-            setTimeout(() => {
-                router.push(`/campus/${selectedInstitution.slug}/dashboard`); // Or appropriate dashboard route
-                router.refresh();
-            }, 1000);
+            if (result?.success && result?.slug) {
+                toast.success("Welcome back to your Campus!");
+                setTimeout(() => {
+                    router.push(`/campus/${result.slug}`);
+                    router.refresh();
+                }, 500);
+            }
 
         } catch (error) {
             toast.error("An unexpected error occurred. Please try again.");
@@ -233,13 +233,13 @@ export function UniversalLoginForm() {
 
                                 <div className="space-y-2">
                                     <Label htmlFor="identifier" className="text-sm font-medium text-foreground ml-1">
-                                        Admission or Employee ID
+                                        Email, Admission No. or Register No.
                                     </Label>
                                     <div className="relative">
                                         <User className="absolute left-3.5 top-3.5 h-4 w-4 text-muted-foreground z-10" />
                                         <Input
                                             id="identifier"
-                                            placeholder="Enter your unique ID"
+                                            placeholder="your@email.com or ID number"
                                             value={identifier}
                                             onChange={(e) => setIdentifier(e.target.value)}
                                             className="h-11 pl-10 bg-background/50 border-white/10 dark:border-white/5 shadow-inner rounded-xl focus-visible:ring-primary/50 transition-all text-sm pb-0.5"
@@ -284,6 +284,14 @@ export function UniversalLoginForm() {
                         )}
                     </AnimatePresence>
 
+                </div>
+
+                {/* Signup Link */}
+                <div className="mt-4 text-center text-sm text-muted-foreground">
+                    Don&apos;t have an account?{" "}
+                    <a href="/campus/signup" className="font-semibold text-primary hover:underline">
+                        Sign up here
+                    </a>
                 </div>
             </div>
         </form>

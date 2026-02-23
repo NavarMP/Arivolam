@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import { CampusLayout } from "@/components/campus/campus-layout";
+import { getSession } from "@/lib/auth";
 
 export default async function CampusSlugLayout({
     children,
@@ -12,9 +13,14 @@ export default async function CampusSlugLayout({
     const { slug } = await params;
     const supabase = await createClient();
 
-    // Get current user
+    // Get current Supabase Auth user (may be null for ERP-only users)
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) redirect("/auth/login");
+
+    // Get ERP JWT session (may be null for Supabase Auth-only users)
+    const erpSession = await getSession();
+
+    // Must have at least one auth method
+    if (!user && !erpSession) redirect("/campus/login");
 
     // Get institution by slug
     const { data: institution } = await supabase
@@ -24,18 +30,30 @@ export default async function CampusSlugLayout({
         .eq("is_active", true)
         .single();
 
-    if (!institution) redirect("/");
+    if (!institution) redirect("/campus");
 
-    // Check user membership (don't redirect — allow visitors to browse)
-    const { data: membership } = await supabase
-        .from("institution_members")
-        .select("id, role")
-        .eq("user_id", user.id)
-        .eq("institution_id", institution.id)
-        .eq("is_active", true)
-        .single();
+    // Determine user role from either auth method
+    let userRole = "visitor";
 
-    const userRole = membership?.role || "visitor";
+    // Method 1: Check Supabase Auth membership
+    if (user) {
+        const { data: membership } = await supabase
+            .from("institution_members")
+            .select("id, role")
+            .eq("user_id", user.id)
+            .eq("institution_id", institution.id)
+            .eq("is_active", true)
+            .single();
+
+        if (membership) {
+            userRole = membership.role;
+        }
+    }
+
+    // Method 2: Check ERP JWT session (takes priority if it matches this institution)
+    if (erpSession && erpSession.institution_id === institution.id) {
+        userRole = erpSession.role;
+    }
 
     // Fetch buildings & POIs for AI context
     const [{ data: buildings }, { data: pois }] = await Promise.all([

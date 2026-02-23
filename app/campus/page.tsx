@@ -13,6 +13,11 @@ import {
     ShieldCheck,
     Zap,
     ArrowRight,
+    UserPlus,
+    LogIn,
+    CheckCircle2,
+    Users,
+    Sparkles,
 } from "lucide-react";
 import { AdaptiveLogo } from "@/components/shared/adaptive-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -50,6 +55,30 @@ const features = [
     },
 ];
 
+const howItWorks = [
+    {
+        icon: <Building2 className="h-6 w-6" />,
+        title: "Register",
+        description: "Register your institution on the platform in minutes.",
+        color: "text-primary",
+        bg: "bg-primary/10",
+    },
+    {
+        icon: <Users className="h-6 w-6" />,
+        title: "Enroll",
+        description: "Students, staff, and parents sign up and get approved by the admin.",
+        color: "text-emerald-500",
+        bg: "bg-emerald-500/10",
+    },
+    {
+        icon: <Sparkles className="h-6 w-6" />,
+        title: "Access",
+        description: "Unlock the full campus ERP experience with all features.",
+        color: "text-blue-500",
+        bg: "bg-blue-500/10",
+    },
+];
+
 const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -79,8 +108,8 @@ export default function CampusLandingPage() {
                 <div className="absolute top-6 left-6 right-6 md:left-8 md:right-8 z-20 flex justify-between items-center">
                     {/* <Link href="/">
                         <Button variant="ghost" className="gap-2 bg-background/50 backdrop-blur-sm">
-                            <ArrowRight className="h-4 w-4 rotate-180" />
-                            Return to Social
+                            <AdaptiveLogo size={20} />
+                            <span className="hidden sm:inline">Arivolam Social</span>
                         </Button>
                     </Link> */}
                     <ThemeToggle />
@@ -106,11 +135,18 @@ export default function CampusLandingPage() {
                             The ultimate infrastructure for educational excellence. Built on top of the Arivolam Social network, experience futuristic tech like RFID tracking and intelligent navigation seamlessly integrated into one powerful platform.
                         </p>
 
+                        {/* CTA Buttons */}
                         <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
                             <Link href="/campus/login">
                                 <Button size="lg" className="w-full sm:w-auto gap-2 group text-base h-12 px-8 shadow-lg shadow-primary/25">
-                                    <Building2 className="h-5 w-5 group-hover:scale-110 transition-transform" />
-                                    Universal Campus Login
+                                    <LogIn className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                                    Login to Campus
+                                </Button>
+                            </Link>
+                            <Link href="/campus/signup">
+                                <Button size="lg" variant="outline" className="w-full sm:w-auto gap-2 group text-base h-12 px-8">
+                                    <UserPlus className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                                    Sign Up
                                 </Button>
                             </Link>
                         </div>
@@ -146,6 +182,41 @@ export default function CampusLandingPage() {
                     </motion.div>
                 </div>
 
+                {/* How It Works */}
+                <motion.div
+                    variants={containerVariants}
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true, margin: "-100px" }}
+                    className="mt-32"
+                >
+                    <div className="text-center mb-12">
+                        <h2 className="text-3xl md:text-4xl font-bold mb-4">How It Works</h2>
+                        <p className="text-muted-foreground max-w-xl mx-auto">
+                            Get your institution up and running on Arivolam in three simple steps.
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+                        {howItWorks.map((step, index) => (
+                            <motion.div
+                                key={index}
+                                variants={itemVariants}
+                                className="text-center relative"
+                            >
+                                <div className={`mx-auto mb-4 w-16 h-16 rounded-2xl ${step.bg} flex items-center justify-center ${step.color}`}>
+                                    {step.icon}
+                                </div>
+                                <div className="absolute -top-2 -right-2 md:right-auto md:left-1/2 md:ml-6 w-7 h-7 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground border border-border">
+                                    {index + 1}
+                                </div>
+                                <h3 className="text-lg font-semibold mb-2">{step.title}</h3>
+                                <p className="text-sm text-muted-foreground">{step.description}</p>
+                            </motion.div>
+                        ))}
+                    </div>
+                </motion.div>
+
                 {/* Features Section */}
                 <motion.div
                     variants={containerVariants}
@@ -157,7 +228,7 @@ export default function CampusLandingPage() {
                     <div className="text-center mb-16">
                         <h2 className="text-3xl md:text-4xl font-bold mb-4">Unmatched Futuristic Capabilities</h2>
                         <p className="text-muted-foreground max-w-2xl mx-auto">
-                            We've re-imagined campus management from the ground up to give you an unparalleled experience.
+                            We&apos;ve re-imagined campus management from the ground up to give you an unparalleled experience.
                         </p>
                     </div>
 

@@ -177,7 +177,7 @@ export default function LoginPage() {
                         </Link>
                     </p>
                     <Link
-                        href="/auth/institution-login"
+                        href="/campus/login"
                         className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
                         🏛️ Institution Login

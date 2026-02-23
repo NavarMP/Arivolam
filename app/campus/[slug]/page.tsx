@@ -1,5 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
-import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, Clock, BookOpen, AlertCircle } from "lucide-react";
 
@@ -9,12 +9,18 @@ export default async function CampusDashboardPage({
     params: Promise<{ slug: string }>;
 }) {
     const { slug } = await params;
+
+    // Try Supabase Auth first, fall back to ERP session
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
+    const erpSession = await getSession();
 
-    if (!user) redirect("/auth/login");
-
-    const displayName = user.user_metadata?.full_name || user.email?.split("@")[0] || "there";
+    let displayName = "there";
+    if (user) {
+        displayName = user.user_metadata?.full_name || user.email?.split("@")[0] || "there";
+    } else if (erpSession) {
+        displayName = erpSession.identifier || "there";
+    }
 
     return (
         <div className="space-y-6">
