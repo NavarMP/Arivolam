@@ -240,21 +240,3 @@ create trigger arivolam_profiles_updated_at
   before update on public.arivolam_profiles
   for each row execute procedure public.update_updated_at();
 
--- =====================================================
--- Seed: SAFI Institute of Advanced Study
--- =====================================================
-insert into public.institutions (name, slug, short_name, description, address, city, state, latitude, longitude, google_maps_embed, is_active, is_verified)
-values (
-  'SAFI Institute of Advanced Study',
-  'sias',
-  'SIAS',
-  'SAFI Institute of Advanced Study (Autonomous), Vazhayur — A premier institution for higher education in Kerala.',
-  'Vazhayur, Malappuram',
-  'Malappuram',
-  'Kerala',
-  11.2274,
-  75.9104,
-  'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d978.3654006108488!2d75.91038730295445!3d11.227414666510874!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3ba6452620add83f%3A0x65d2b6e3902bd06a!2sSAFI%20Institute%20of%20Advanced%20Study%20(Autonomous)!5e0!3m2!1sen!2sin!4v1771351120234!5m2!1sen!2sin',
-  true,
-  true
-) on conflict (slug) do nothing;

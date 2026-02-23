@@ -95,7 +95,7 @@ export default function CampusSignupPage() {
         fullName.length >= 2 &&
         email.includes("@") &&
         phone.length >= 7 &&
-        hasIdNumber &&
+        (role !== "student" || hasIdNumber) &&
         password.length >= 6 &&
         password === confirmPassword;
 
@@ -280,7 +280,30 @@ export default function CampusSignupPage() {
                                     ) : (
                                         <>
                                             {/* Selected institution */}
-                                            <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20 flex flex-col gap-1 items-start relative">
+                                            {/* Role Selection */}
+                                            <div className="space-y-2">
+                                                <Label className="text-sm font-medium ml-1">I am signing up as a...</Label>
+                                                <div className="flex p-1 bg-muted/50 rounded-xl">
+                                                    {['student', 'staff', 'parent'].map((r) => (
+                                                        <button
+                                                            key={r}
+                                                            type="button"
+                                                            onClick={(e) => { e.preventDefault(); setRole(r); }}
+                                                            className={cn(
+                                                                "flex-1 text-sm font-medium py-2.5 rounded-lg transition-all capitalize",
+                                                                role === r
+                                                                    ? "bg-background shadow-sm text-primary ring-1 ring-border/50"
+                                                                    : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                                                            )}
+                                                        >
+                                                            {r}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Selected institution */}
+                                            <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20 flex flex-col gap-1 items-start relative mt-4">
                                                 <div className="absolute right-3 top-4 cursor-pointer text-xs text-muted-foreground hover:text-primary underline underline-offset-2 transition-colors" onClick={resetSelection}>
                                                     Change
                                                 </div>
@@ -290,112 +313,84 @@ export default function CampusSignupPage() {
                                                 <span className="text-sm font-medium w-3/4 truncate">{selectedInstitution.name}</span>
                                             </div>
 
-                                            {/* Full name */}
-                                            <div className="space-y-2">
-                                                <Label htmlFor="fullName" className="text-sm font-medium ml-1">Full Name *</Label>
-                                                <div className="relative">
-                                                    <User className="absolute left-3.5 top-3.5 h-4 w-4 text-muted-foreground z-10" />
-                                                    <Input
-                                                        id="fullName"
-                                                        placeholder="Your full name"
-                                                        value={fullName}
-                                                        onChange={(e) => setFullName(e.target.value)}
-                                                        className="h-11 pl-10 rounded-xl bg-background/50"
-                                                        required
-                                                    />
+                                            <div className="grid grid-cols-2 gap-3 mt-4">
+                                                <div className="space-y-2 col-span-2">
+                                                    <Label htmlFor="fullName" className="text-sm font-medium ml-1">Full Name *</Label>
+                                                    <div className="relative">
+                                                        <User className="absolute left-3.5 top-3.5 h-4 w-4 text-muted-foreground z-10" />
+                                                        <Input id="fullName" placeholder="Your full name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="h-11 pl-10 rounded-xl bg-background/50" required />
+                                                    </div>
                                                 </div>
-                                            </div>
 
-                                            {/* Email */}
-                                            <div className="space-y-2">
-                                                <Label htmlFor="email" className="text-sm font-medium ml-1">Email *</Label>
-                                                <div className="relative">
-                                                    <Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-muted-foreground z-10" />
-                                                    <Input
-                                                        id="email"
-                                                        type="email"
-                                                        placeholder="your@email.com"
-                                                        value={email}
-                                                        onChange={(e) => setEmail(e.target.value)}
-                                                        className="h-11 pl-10 rounded-xl bg-background/50"
-                                                        required
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            {/* Phone */}
-                                            <div className="space-y-2">
-                                                <Label htmlFor="phone" className="text-sm font-medium ml-1">Phone Number *</Label>
-                                                <div className="relative">
-                                                    <Phone className="absolute left-3.5 top-3.5 h-4 w-4 text-muted-foreground z-10" />
-                                                    <Input
-                                                        id="phone"
-                                                        type="tel"
-                                                        placeholder="+91 98765 43210"
-                                                        value={phone}
-                                                        onChange={(e) => setPhone(e.target.value)}
-                                                        className="h-11 pl-10 rounded-xl bg-background/50"
-                                                        required
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            {/* Register / Admission Numbers */}
-                                            <div className="grid grid-cols-2 gap-3">
                                                 <div className="space-y-2">
-                                                    <Label htmlFor="registerNumber" className="text-sm font-medium ml-1">Register No. *</Label>
-                                                    <Input
-                                                        id="registerNumber"
-                                                        placeholder="REG001"
-                                                        value={registerNumber}
-                                                        onChange={(e) => setRegisterNumber(e.target.value)}
-                                                        className="h-11 rounded-xl bg-background/50"
-                                                    />
+                                                    <Label htmlFor="email" className="text-sm font-medium ml-1">Email *</Label>
+                                                    <div className="relative">
+                                                        <Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-muted-foreground z-10" />
+                                                        <Input id="email" type="email" placeholder="your@email.com" value={email} onChange={(e) => setEmail(e.target.value)} className="h-11 pl-10 rounded-xl bg-background/50" required />
+                                                    </div>
                                                 </div>
+
                                                 <div className="space-y-2">
-                                                    <Label htmlFor="admissionNumber" className="text-sm font-medium ml-1">Admission No. *</Label>
-                                                    <Input
-                                                        id="admissionNumber"
-                                                        placeholder="ADM001"
-                                                        value={admissionNumber}
-                                                        onChange={(e) => setAdmissionNumber(e.target.value)}
-                                                        className="h-11 rounded-xl bg-background/50"
-                                                    />
+                                                    <Label htmlFor="phone" className="text-sm font-medium ml-1">Phone Number *</Label>
+                                                    <div className="relative">
+                                                        <Phone className="absolute left-3.5 top-3.5 h-4 w-4 text-muted-foreground z-10" />
+                                                        <Input id="phone" type="tel" placeholder="+91 9876543210" value={phone} onChange={(e) => setPhone(e.target.value)} className="h-11 pl-10 rounded-xl bg-background/50" required />
+                                                    </div>
                                                 </div>
                                             </div>
-                                            {!hasIdNumber && (
-                                                <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5 ml-1">
-                                                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                                                    At least one of Register No. or Admission No. is required.
-                                                </p>
+
+                                            {/* Role-Specific Fields */}
+                                            {role === "student" && (
+                                                <div className="space-y-4 pt-4 mt-2 border-t border-border/50">
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="registerNumber" className="text-sm font-medium ml-1">Register No.</Label>
+                                                            <Input id="registerNumber" placeholder="REG001" value={registerNumber} onChange={(e) => setRegisterNumber(e.target.value)} className="h-11 rounded-xl bg-background/50" />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="admissionNumber" className="text-sm font-medium ml-1">Admission No.</Label>
+                                                            <Input id="admissionNumber" placeholder="ADM001" value={admissionNumber} onChange={(e) => setAdmissionNumber(e.target.value)} className="h-11 rounded-xl bg-background/50" />
+                                                        </div>
+                                                    </div>
+                                                    {!hasIdNumber && (
+                                                        <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5 ml-1">
+                                                            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                                                            At least one of Register No. or Admission No. is required.
+                                                        </p>
+                                                    )}
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="department" className="text-sm font-medium ml-1">Department (Optional)</Label>
+                                                        <Input id="department" placeholder="e.g. Computer Science" value={department} onChange={(e) => setDepartment(e.target.value)} className="h-11 rounded-xl bg-background/50" />
+                                                    </div>
+                                                </div>
                                             )}
 
-                                            {/* Role & Department */}
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="role" className="text-sm font-medium ml-1">Role</Label>
-                                                    <select
-                                                        id="role"
-                                                        value={role}
-                                                        onChange={(e) => setRole(e.target.value)}
-                                                        className="flex h-11 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                                    >
-                                                        <option value="student">Student</option>
-                                                        <option value="staff">Staff</option>
-                                                        <option value="parent">Parent</option>
-                                                    </select>
+                                            {role === "staff" && (
+                                                <div className="space-y-4 pt-4 mt-2 border-t border-border/50">
+                                                    <div className="p-3 mb-2 rounded-xl bg-emerald-500/5 border border-emerald-500/20 text-xs text-emerald-600 dark:text-emerald-400">
+                                                        Staff members will be verified by the campus admin upon request submission.
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="registerNumber" className="text-sm font-medium ml-1">Employee ID (Optional)</Label>
+                                                            <Input id="registerNumber" placeholder="EMP001" value={registerNumber} onChange={(e) => setRegisterNumber(e.target.value)} className="h-11 rounded-xl bg-background/50" />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="department" className="text-sm font-medium ml-1">Department</Label>
+                                                            <Input id="department" placeholder="e.g. Science Dept" value={department} onChange={(e) => setDepartment(e.target.value)} className="h-11 rounded-xl bg-background/50" />
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="department" className="text-sm font-medium ml-1">Department</Label>
-                                                    <Input
-                                                        id="department"
-                                                        placeholder="e.g. CS"
-                                                        value={department}
-                                                        onChange={(e) => setDepartment(e.target.value)}
-                                                        className="h-11 rounded-xl bg-background/50"
-                                                    />
+                                            )}
+
+                                            {role === "parent" && (
+                                                <div className="space-y-4 pt-4 mt-2 border-t border-border/50">
+                                                    <div className="p-3 mb-2 rounded-xl bg-blue-500/5 border border-blue-500/20 text-xs text-blue-600 dark:text-blue-400 flex gap-2">
+                                                        <User className="h-4 w-4 shrink-0" />
+                                                        <p>Parents do not need an ID number. Once your account is approved, you will be able to link it to your child's student dashboard.</p>
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            )}
 
 
 

@@ -40,7 +40,7 @@ interface Institution {
     name: string;
     short_name: string | null;
     slug: string;
-    type: string;
+    description?: string | null;
     city: string | null;
     state: string | null;
     country: string;
@@ -86,73 +86,117 @@ function InstitutionDialog({
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="w-full max-w-lg rounded-2xl border border-border/50 bg-card p-6 shadow-2xl">
-                <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-lg font-bold">
-                        {isEdit ? "Edit Institution" : "Create Institution"}
-                    </h2>
-                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto">
+            <div className="w-full max-w-2xl rounded-2xl border border-border/50 bg-card p-6 shadow-2xl my-auto">
+                <div className="mb-6 flex items-center justify-between">
+                    <div>
+                        <h2 className="text-xl font-bold">
+                            {isEdit ? "Edit Institution" : "Register Institution"}
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                            {isEdit ? "Update details for the campus" : "Set up a new campus on the platform"}
+                        </p>
+                    </div>
+                    <button type="button" onClick={onClose} className="rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground">
                         <X className="h-5 w-5" />
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-3">
-                    <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="space-y-1">
-                            <Label htmlFor="name" className="text-xs">Name</Label>
-                            <Input id="name" name="name" defaultValue={institution?.name} required />
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* Section 1: Institution Details */}
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 border-b pb-2">
+                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">1</div>
+                            <h3 className="font-semibold">Institution Details</h3>
                         </div>
-                        <div className="space-y-1">
-                            <Label htmlFor="short_name" className="text-xs">Short Name</Label>
-                            <Input id="short_name" name="short_name" defaultValue={institution?.short_name || ""} />
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="space-y-1.5">
+                                <Label htmlFor="name" className="text-sm">Institution Name *</Label>
+                                <Input id="name" name="name" defaultValue={institution?.name} placeholder="e.g. SAFI Institute" required />
+                            </div>
+                            {!isEdit ? (
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="slug" className="text-sm">Campus URL (slug) *</Label>
+                                    <Input id="slug" name="slug" placeholder="e.g. sias" required />
+                                </div>
+                            ) : (
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="short_name" className="text-sm">Short Name</Label>
+                                    <Input id="short_name" name="short_name" defaultValue={institution?.short_name || ""} placeholder="e.g. SIAS" />
+                                </div>
+                            )}
+                        </div>
+
+                        {!isEdit && (
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div className="space-y-1.5 col-span-2">
+                                    <Label htmlFor="description" className="text-sm">Description</Label>
+                                    <textarea id="description" name="description" placeholder="Brief description..." className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none h-16" />
+                                </div>
+                            </div>
+                        )}
+                        {isEdit && (
+                            <div className="space-y-1.5">
+                                <Label htmlFor="description" className="text-sm">Description</Label>
+                                <textarea id="description" name="description" placeholder="Brief description..." className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none h-16" />
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Section 2: Location */}
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 border-b pb-2">
+                            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">2</div>
+                            <h3 className="font-semibold">Location</h3>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label htmlFor="city" className="text-sm">City</Label>
+                            <Input id="city" name="city" defaultValue={institution?.city || ""} placeholder="e.g. Malappuram" />
+                        </div>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="space-y-1.5">
+                                <Label htmlFor="state" className="text-sm">State</Label>
+                                <Input id="state" name="state" defaultValue={institution?.state || ""} placeholder="e.g. Kerala" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="country" className="text-sm">Country</Label>
+                                <Input id="country" name="country" defaultValue={institution?.country || "India"} placeholder="India" />
+                            </div>
                         </div>
                     </div>
 
+                    {/* Section 3: Admin Account */}
                     {!isEdit && (
-                        <div className="space-y-1">
-                            <Label htmlFor="slug" className="text-xs">Slug (URL)</Label>
-                            <Input id="slug" name="slug" placeholder="e.g. sias" required />
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2 border-b pb-2">
+                                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">3</div>
+                                <h3 className="font-semibold">Founding Admin Account</h3>
+                            </div>
+                            <div className="p-3 mb-2 rounded-xl bg-blue-500/5 border border-blue-500/20 text-xs text-blue-600 dark:text-blue-400">
+                                This account will have full access to manage the campus.
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="adminName" className="text-sm">Full Name *</Label>
+                                <Input id="adminName" name="adminName" placeholder="Admin's full name" required />
+                            </div>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="adminEmail" className="text-sm">Email Address *</Label>
+                                    <Input id="adminEmail" name="adminEmail" type="email" placeholder="admin@institution.edu" required />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="adminPassword" className="text-sm">Password *</Label>
+                                    <Input id="adminPassword" name="adminPassword" type="password" placeholder="Min 6 characters" required minLength={6} />
+                                </div>
+                            </div>
                         </div>
                     )}
 
-                    <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="space-y-1">
-                            <Label htmlFor="type" className="text-xs">Type</Label>
-                            <select
-                                id="type"
-                                name="type"
-                                defaultValue={institution?.type || "college"}
-                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                            >
-                                <option value="university">University</option>
-                                <option value="college">College</option>
-                                <option value="school">School</option>
-                                <option value="institute">Institute</option>
-                            </select>
-                        </div>
-                        <div className="space-y-1">
-                            <Label htmlFor="country" className="text-xs">Country</Label>
-                            <Input id="country" name="country" defaultValue={institution?.country || "India"} />
-                        </div>
-                    </div>
-
-                    <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="space-y-1">
-                            <Label htmlFor="city" className="text-xs">City</Label>
-                            <Input id="city" name="city" defaultValue={institution?.city || ""} />
-                        </div>
-                        <div className="space-y-1">
-                            <Label htmlFor="state" className="text-xs">State</Label>
-                            <Input id="state" name="state" defaultValue={institution?.state || ""} />
-                        </div>
-                    </div>
-
-                    <div className="flex justify-end gap-2 pt-2">
-                        <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-                        <Button type="submit" disabled={isPending} className="gap-2">
+                    <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
+                        <Button type="button" variant="outline" onClick={onClose} className="px-6 rounded-xl">Cancel</Button>
+                        <Button type="submit" disabled={isPending} className="gap-2 px-6 rounded-xl">
                             {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                            {isEdit ? "Save Changes" : "Create"}
+                            {isEdit ? "Save Changes" : "Register Campus"}
                         </Button>
                     </div>
                 </form>
@@ -227,8 +271,8 @@ export function InstitutionsTable({ institutions }: InstitutionsTableProps) {
                             key={f}
                             onClick={() => setFilter(f)}
                             className={`rounded-lg px-3 py-1.5 text-xs font-medium capitalize transition-colors ${filter === f
-                                    ? "bg-primary text-primary-foreground"
-                                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted text-muted-foreground hover:bg-muted/80"
                                 }`}
                         >
                             {f}
@@ -256,7 +300,6 @@ export function InstitutionsTable({ institutions }: InstitutionsTableProps) {
                         <thead>
                             <tr className="border-b border-border/50 bg-muted/30">
                                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Institution</th>
-                                <th className="hidden px-4 py-3 text-left font-medium text-muted-foreground md:table-cell">Type</th>
                                 <th className="hidden px-4 py-3 text-left font-medium text-muted-foreground sm:table-cell">Location</th>
                                 <th className="px-4 py-3 text-center font-medium text-muted-foreground">Members</th>
                                 <th className="px-4 py-3 text-center font-medium text-muted-foreground">Status</th>
@@ -277,9 +320,6 @@ export function InstitutionsTable({ institutions }: InstitutionsTableProps) {
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="hidden px-4 py-3 md:table-cell">
-                                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs capitalize">{inst.type}</span>
-                                    </td>
                                     <td className="hidden px-4 py-3 text-xs text-muted-foreground sm:table-cell">
                                         <div className="flex items-center gap-1">
                                             <MapPin className="h-3 w-3" />
@@ -297,8 +337,8 @@ export function InstitutionsTable({ institutions }: InstitutionsTableProps) {
                                             onClick={() => handleToggle(inst)}
                                             disabled={isPending}
                                             className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors ${inst.is_active
-                                                    ? "bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20"
-                                                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                                                ? "bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20"
+                                                : "bg-muted text-muted-foreground hover:bg-muted/80"
                                                 }`}
                                         >
                                             {inst.is_active ? <ToggleRight className="h-3 w-3" /> : <ToggleLeft className="h-3 w-3" />}

@@ -232,8 +232,8 @@ export async function campusSignup(formData: FormData) {
         return { error: 'Please enter a valid email address.' }
     }
 
-    if (!registerNumber && !admissionNumber) {
-        return { error: 'Please provide at least one: Register Number or Admission Number.' }
+    if (role === 'student' && !registerNumber && !admissionNumber) {
+        return { error: 'Students must provide at least one: Register Number or Admission Number.' }
     }
 
     if (password.length < 6) {

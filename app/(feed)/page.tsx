@@ -12,7 +12,7 @@ export default async function FeedPage() {
         .from("posts")
         .select(`
             *,
-            author:arivolam_profiles!posts_author_id_fkey (
+            author:arivolam_profiles (
                 id,
                 username,
                 display_name,
