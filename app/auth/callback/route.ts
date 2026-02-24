@@ -40,9 +40,19 @@ export async function GET(request: Request) {
         if (!error) {
             // Check if user has completed onboarding (has a username)
             const { data: { user } } = await supabase.auth.getUser()
+
+            // If the user is arriving from a password reset email
+            // (Supabase adds a specific hash or the next param was set to /auth/reset-password during the action)
+            // But realistically, if they are directed to the callback via clicking a link in their email, 
+            // the `next` param might not be preserved depending on the email template.
+            // However, Supabase verify endpoints natively redirect to the `redirectTo` URL provided in the action.
+            // Which means the user should actually land on `/auth/reset-password` directly, not `/auth/callback`.
+            // The issue is that the email template might be pointing to the callback route without a next param.
+            // Let's ensure the redirectTo URL from the action is respected.
+
             let redirectTo = next
 
-            if (user) {
+            if (user && !redirectTo.includes('reset-password')) {
                 const { data: profile } = await supabase
                     .from('arivolam_profiles')
                     .select('username')
@@ -65,3 +75,4 @@ export async function GET(request: Request) {
     // If there's an error or no code, redirect to login page with error
     return NextResponse.redirect(`${appUrl}/auth/login?error=Could not authenticate`)
 }
+
