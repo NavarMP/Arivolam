@@ -108,3 +108,37 @@ export async function getUserInstitutions() {
 
     return data || []
 }
+
+// ─── Forgot Password ───
+export async function forgotPassword(formData: FormData) {
+    const supabase = await createClient()
+    const email = formData.get('email') as string
+
+    const redirectUrl = `${getURL()}auth/reset-password`
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectUrl,
+    })
+
+    if (error) {
+        return { error: error.message }
+    }
+
+    return { success: true }
+}
+
+// ─── Reset Password ───
+export async function resetPassword(formData: FormData) {
+    const supabase = await createClient()
+    const password = formData.get('password') as string
+
+    const { error } = await supabase.auth.updateUser({
+        password: password
+    })
+
+    if (error) {
+        return { error: error.message }
+    }
+
+    redirect('/auth/login?message=Password updated successfully')
+}
