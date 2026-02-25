@@ -1,4 +1,10 @@
 export function getURL() {
+    // In development, always use localhost so OAuth callbacks
+    // and password reset emails work correctly.
+    if (process.env.NODE_ENV === 'development') {
+        return 'http://localhost:3000/';
+    }
+
     let url =
         process?.env?.NEXT_PUBLIC_APP_URL ?? // Use explicit app URL
         process?.env?.NEXT_PUBLIC_SITE_URL ?? // Set this to your site URL in production env.

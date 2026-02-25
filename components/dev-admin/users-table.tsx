@@ -10,6 +10,7 @@ import {
     Calendar,
     MoreHorizontal,
     UserX,
+    Trash2,
     Loader2,
 } from "lucide-react";
 import {
@@ -22,7 +23,7 @@ import {
     DropdownMenuSubTrigger,
     DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
-import { toggleDevAdmin, removeUserFromInstitution, updateUserRole } from "@/app/dev-admin/actions";
+import { toggleDevAdmin, removeUserFromInstitution, updateUserRole, deleteUser } from "@/app/dev-admin/actions";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 
@@ -44,13 +45,14 @@ interface UsersTableProps {
 }
 
 export function UsersTable({ users }: UsersTableProps) {
+    const [localUsers, setLocalUsers] = useState<UserProfile[]>(users);
     const [search, setSearch] = useState("");
     const [roleFilter, setRoleFilter] = useState<string>("all");
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
     const router = useRouter();
 
-    const filtered = users.filter((user) => {
+    const filtered = localUsers.filter((user) => {
         const matchesSearch =
             (user.display_name?.toLowerCase().includes(search.toLowerCase()) ?? false) ||
             (user.username?.toLowerCase().includes(search.toLowerCase()) ?? false) ||
@@ -68,12 +70,22 @@ export function UsersTable({ users }: UsersTableProps) {
         const action = user.is_dev_admin ? "Remove dev admin from" : "Promote to dev admin:";
         if (!confirm(`${action} ${user.display_name || user.id}?`)) return;
 
+        // Optimistic update
+        const newStatus = !user.is_dev_admin;
+        setLocalUsers((prev) =>
+            prev.map((u) => (u.id === user.id ? { ...u, is_dev_admin: newStatus } : u))
+        );
+
         startTransition(async () => {
-            const result = await toggleDevAdmin(user.id, !user.is_dev_admin);
+            const result = await toggleDevAdmin(user.id, newStatus);
             if (result.error) {
+                // Revert optimistic update on error
+                setLocalUsers((prev) =>
+                    prev.map((u) => (u.id === user.id ? { ...u, is_dev_admin: !newStatus } : u))
+                );
                 toast({ title: "Error", description: result.error, variant: "destructive" });
             } else {
-                toast({ title: user.is_dev_admin ? "Dev admin removed" : "Promoted to dev admin" });
+                toast({ title: newStatus ? "Promoted to dev admin" : "Dev admin removed" });
                 router.refresh();
             }
         });
@@ -104,6 +116,27 @@ export function UsersTable({ users }: UsersTableProps) {
         });
     };
 
+    const handleDeleteUser = (user: UserProfile) => {
+        if (!confirm(`⚠️ Permanently delete "${user.display_name || user.id}"?\n\nThis will remove their profile, institution memberships, and linked enrollments. This action cannot be undone.`)) return;
+
+        // Optimistic removal
+        setLocalUsers((prev) => prev.filter((u) => u.id !== user.id));
+
+        startTransition(async () => {
+            const result = await deleteUser(user.id);
+            if (result.error) {
+                // Revert: re-add user
+                setLocalUsers((prev) => [...prev, user].sort((a, b) =>
+                    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                ));
+                toast({ title: "Error", description: result.error, variant: "destructive" });
+            } else {
+                toast({ title: "User deleted successfully" });
+                router.refresh();
+            }
+        });
+    };
+
     return (
         <div className="space-y-4">
             {/* Toolbar */}
@@ -124,8 +157,8 @@ export function UsersTable({ users }: UsersTableProps) {
                             key={role}
                             onClick={() => setRoleFilter(role)}
                             className={`rounded-lg px-2.5 py-1.5 text-[11px] font-medium capitalize transition-colors ${roleFilter === role
-                                    ? "bg-primary text-primary-foreground"
-                                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted text-muted-foreground hover:bg-muted/80"
                                 }`}
                         >
                             {role === "dev_admin" ? "Dev Admin" : role}
@@ -135,7 +168,7 @@ export function UsersTable({ users }: UsersTableProps) {
             </div>
 
             <p className="text-xs text-muted-foreground">
-                {filtered.length} of {users.length} user{users.length !== 1 ? "s" : ""}
+                {filtered.length} of {localUsers.length} user{localUsers.length !== 1 ? "s" : ""}
             </p>
 
             {/* Table */}
@@ -264,6 +297,14 @@ export function UsersTable({ users }: UsersTableProps) {
                                                         ))}
                                                     </>
                                                 )}
+
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem
+                                                    className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                                    onClick={() => handleDeleteUser(user)}
+                                                >
+                                                    <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete User
+                                                </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </td>

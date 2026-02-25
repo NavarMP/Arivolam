@@ -73,8 +73,8 @@ export default async function CampusTeacherPage({
                         <Clock className="h-4 w-4 text-emerald-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-emerald-600">0</div>
-                        <p className="text-xs text-muted-foreground">Schedule offline</p>
+                        <div className="text-lg font-bold text-muted-foreground">Not configured</div>
+                        <p className="text-xs text-muted-foreground">Timetable module not active</p>
                     </CardContent>
                 </Card>
                 <Card className="hover:shadow-md transition-shadow">
@@ -83,8 +83,8 @@ export default async function CampusTeacherPage({
                         <CalendarCheck className="h-4 w-4 text-amber-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">0</div>
-                        <p className="text-xs text-muted-foreground">Needs grading</p>
+                        <div className="text-lg font-bold text-muted-foreground">None</div>
+                        <p className="text-xs text-muted-foreground">Assignment module not active</p>
                     </CardContent>
                 </Card>
                 <Card className="hover:shadow-md transition-shadow">
@@ -93,8 +93,8 @@ export default async function CampusTeacherPage({
                         <Users className="h-4 w-4 text-blue-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">--%</div>
-                        <p className="text-xs text-muted-foreground">Your assigned batches</p>
+                        <div className="text-lg font-bold text-muted-foreground">Not available</div>
+                        <p className="text-xs text-muted-foreground">Attendance module not active</p>
                     </CardContent>
                 </Card>
                 <Card className="hover:shadow-md transition-shadow bg-emerald-50 dark:bg-emerald-950/30 border-emerald-100 dark:border-emerald-900">
@@ -104,7 +104,7 @@ export default async function CampusTeacherPage({
                     </CardHeader>
                     <CardContent>
                         <div className="text-sm font-medium text-emerald-700 dark:text-emerald-400 mt-2">Create Notice &rarr;</div>
-                        <p className="text-xs text-emerald-600/70 dark:text-emerald-300/70">Broadast to your dept</p>
+                        <p className="text-xs text-emerald-600/70 dark:text-emerald-300/70">Broadcast to your dept</p>
                     </CardContent>
                 </Card>
             </div>
@@ -129,13 +129,11 @@ export default async function CampusTeacherPage({
                         <CardDescription>Recent updates within {staffData.department || "your department"}.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-4">
-                            <div className="flex items-start gap-3 p-3 rounded-lg bg-emerald-50/50 dark:bg-emerald-950/20">
-                                <div className="mt-0.5 h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
-                                <div>
-                                    <p className="text-sm font-medium leading-tight">Welcome to the new Staff Portal!</p>
-                                    <p className="text-xs text-muted-foreground mt-1">Just now</p>
-                                </div>
+                        <div className="flex items-center justify-center py-8 text-center">
+                            <div className="space-y-2">
+                                <BookOpen className="h-8 w-8 text-slate-300 mx-auto" />
+                                <p className="text-sm text-muted-foreground">No recent activity</p>
+                                <p className="text-xs text-muted-foreground/60">Department updates will appear here</p>
                             </div>
                         </div>
                     </CardContent>

@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { message, history = [], campusData } = body as {
+        const { message, history = [], campusData, mode } = body as {
             message: string;
             history?: ChatMessage[];
             campusData?: {
@@ -80,6 +80,7 @@ export async function POST(req: NextRequest) {
                 buildings?: { name: string; category: string; description?: string }[];
                 pois?: { name: string; category: string }[];
             };
+            mode?: "campus" | "social";
         };
 
         if (!message?.trim()) {
@@ -91,8 +92,25 @@ export async function POST(req: NextRequest) {
 
         const genAI = new GoogleGenerativeAI(apiKey);
 
-        // Build full system instruction with campus context
-        const systemInstruction = SYSTEM_PROMPT + buildCampusContext(campusData);
+        // Build full system instruction with campus context + mode-specific focus
+        let systemInstruction = SYSTEM_PROMPT + buildCampusContext(campusData);
+
+        if (mode === "social") {
+            systemInstruction += `\n\n## Current Context: Ariv Social
+You are currently assisting a user on the Ariv Social feed. Focus on:
+- Helping create and share posts
+- Finding and connecting with other users
+- Exploring social feed features
+- Understanding notification and profile settings
+- General platform navigation tips`;
+        } else if (mode === "campus") {
+            systemInstruction += `\n\n## Current Context: Campusolam
+You are assisting a user within their campus portal. Focus on:
+- Campus navigation and building/room locations
+- Academic schedules, courses, and grades
+- Campus events and announcements
+- Institution-specific features and services`;
+        }
 
         const model = genAI.getGenerativeModel({
             model: "gemini-3-flash-preview",

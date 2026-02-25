@@ -14,7 +14,13 @@ export default function ResetPasswordPage() {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [password, setPassword] = useState("");
     const containerRef = useRef<HTMLDivElement>(null);
+
+    const passwordsMatch = password === confirmPassword;
+    const canSubmit = password.length >= 6 && passwordsMatch;
 
     useEffect(() => {
         const ctx = gsap.context(() => {
@@ -30,6 +36,7 @@ export default function ResetPasswordPage() {
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
+        if (!canSubmit) return;
         setError(null);
         setLoading(true);
         const formData = new FormData(e.currentTarget);
@@ -73,6 +80,8 @@ export default function ResetPasswordPage() {
                                 placeholder="••••••••"
                                 required
                                 minLength={6}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
                                 className="rounded-xl pr-10"
                             />
                             <button
@@ -85,6 +94,32 @@ export default function ResetPasswordPage() {
                         </div>
                     </div>
 
+                    <div className="auth-field space-y-2">
+                        <Label htmlFor="confirmPassword" className="text-xs font-medium">Confirm New Password</Label>
+                        <div className="relative">
+                            <Input
+                                id="confirmPassword"
+                                type={showConfirm ? "text" : "password"}
+                                placeholder="••••••••"
+                                required
+                                minLength={6}
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                className="rounded-xl pr-10"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowConfirm(!showConfirm)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                                {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                        </div>
+                        {confirmPassword && !passwordsMatch && (
+                            <p className="text-xs text-destructive ml-1">Passwords do not match.</p>
+                        )}
+                    </div>
+
                     {error && (
                         <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-2.5 text-xs text-destructive">
                             {error}
@@ -93,7 +128,7 @@ export default function ResetPasswordPage() {
 
                     <Button
                         type="submit"
-                        disabled={loading}
+                        disabled={loading || !canSubmit}
                         className="auth-submit w-full gap-2 rounded-xl py-5 font-semibold shadow-lg shadow-primary/20"
                         size="lg"
                     >
@@ -111,3 +146,4 @@ export default function ResetPasswordPage() {
         </div>
     );
 }
+

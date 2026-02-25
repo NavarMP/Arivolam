@@ -34,6 +34,7 @@ interface Institution {
 export function UniversalLoginForm() {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     // Search State
     const [searchQuery, setSearchQuery] = useState("");
@@ -86,6 +87,7 @@ export function UniversalLoginForm() {
         }
 
         setIsLoading(true);
+        setError(null);
 
         try {
             const formData = new FormData();
@@ -96,6 +98,7 @@ export function UniversalLoginForm() {
             const result = await campusLogin(formData);
 
             if (result?.error) {
+                setError(result.error);
                 toast.error(result.error);
                 return;
             }
@@ -108,9 +111,10 @@ export function UniversalLoginForm() {
                 }, 500);
             }
 
-        } catch (error) {
+        } catch (err) {
+            setError("An unexpected error occurred. Please try again.");
             toast.error("An unexpected error occurred. Please try again.");
-            console.error(error);
+            console.error(err);
         } finally {
             setIsLoading(false);
         }
@@ -265,6 +269,12 @@ export function UniversalLoginForm() {
                                         />
                                     </div>
                                 </div>
+
+                                {error && (
+                                    <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-2.5 text-xs text-destructive">
+                                        {error}
+                                    </div>
+                                )}
 
                                 <Button
                                     type="submit"

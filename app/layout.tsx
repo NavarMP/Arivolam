@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SmoothScrollProvider } from '@/components/providers/smooth-scroll-provider';
 import { Toaster } from '@/components/ui/toaster';
+import { Toaster as SonnerToaster } from 'sonner';
 import { GlobalFooter } from '@/components/shared/global-footer';
 import './globals.css';
 
@@ -40,6 +41,7 @@ export default function RootLayout({
             </div>
           </SmoothScrollProvider>
           <Toaster />
+          <SonnerToaster position="top-center" richColors />
         </ThemeProvider>
       </body>
     </html>

@@ -30,7 +30,7 @@ export default async function FeedLayout({
             {/* Mobile: Floating dock navigation */}
             <MobileNav user={user} />
 
-            <AIChatWidget />
+            <AIChatWidget mode="social" />
         </div>
     );
 }

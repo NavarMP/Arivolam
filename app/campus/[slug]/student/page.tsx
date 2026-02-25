@@ -73,8 +73,8 @@ export default async function CampusStudentPage({
                         <Clock className="h-4 w-4 text-emerald-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-emerald-600">--%</div>
-                        <p className="text-xs text-muted-foreground">Log incoming (soon)</p>
+                        <div className="text-lg font-bold text-muted-foreground">Not available</div>
+                        <p className="text-xs text-muted-foreground">Attendance module not active</p>
                     </CardContent>
                 </Card>
                 <Card className="hover:shadow-md transition-shadow">
@@ -83,8 +83,8 @@ export default async function CampusStudentPage({
                         <BookOpen className="h-4 w-4 text-amber-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">0</div>
-                        <p className="text-xs text-muted-foreground">Nothing due tomorrow</p>
+                        <div className="text-lg font-bold text-muted-foreground">None</div>
+                        <p className="text-xs text-muted-foreground">Assignment module not active</p>
                     </CardContent>
                 </Card>
                 <Card className="hover:shadow-md transition-shadow">
@@ -93,18 +93,18 @@ export default async function CampusStudentPage({
                         <Calendar className="h-4 w-4 text-blue-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-xl font-bold truncate">No Schedule</div>
-                        <p className="text-xs text-muted-foreground">Free period</p>
+                        <div className="text-lg font-bold text-muted-foreground">Not configured</div>
+                        <p className="text-xs text-muted-foreground">Timetable module not active</p>
                     </CardContent>
                 </Card>
-                <Card className="hover:shadow-md transition-shadow bg-indigo-50 dark:bg-indigo-950/30 border-indigo-100 dark:border-indigo-900">
+                <Card className="hover:shadow-md transition-shadow bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-100 dark:border-indigo-900">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium text-indigo-800 dark:text-indigo-300">Announcements</CardTitle>
                         <AlertCircle className="h-4 w-4 text-indigo-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-indigo-700 dark:text-indigo-400">1</div>
-                        <p className="text-xs text-indigo-600/70 dark:text-indigo-300/70">Campus-wide notice</p>
+                        <div className="text-lg font-bold text-indigo-700 dark:text-indigo-400">None yet</div>
+                        <p className="text-xs text-indigo-600/70 dark:text-indigo-300/70">No announcements posted</p>
                     </CardContent>
                 </Card>
             </div>
@@ -129,13 +129,11 @@ export default async function CampusStudentPage({
                         <CardDescription>Latest updates from Arivolam.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-4">
-                            <div className="flex items-start gap-3 p-3 rounded-lg bg-indigo-50/50 dark:bg-indigo-950/20">
-                                <div className="mt-0.5 h-2 w-2 rounded-full bg-indigo-500 shrink-0" />
-                                <div>
-                                    <p className="text-sm font-medium leading-tight">Welcome to the new Student Portal!</p>
-                                    <p className="text-xs text-muted-foreground mt-1">Just now</p>
-                                </div>
+                        <div className="flex items-center justify-center py-8 text-center">
+                            <div className="space-y-2">
+                                <AlertCircle className="h-8 w-8 text-slate-300 mx-auto" />
+                                <p className="text-sm text-muted-foreground">No recent activity</p>
+                                <p className="text-xs text-muted-foreground/60">Updates will appear here as they happen</p>
                             </div>
                         </div>
                     </CardContent>

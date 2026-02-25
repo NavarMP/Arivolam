@@ -203,3 +203,56 @@ export async function removeUserFromInstitution(userId: string, institutionId: s
     revalidatePath("/dev-admin/users");
     return { success: true };
 }
+
+export async function deleteUser(userId: string) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "Not authenticated" };
+
+    const { data: profile } = await supabase
+        .from("arivolam_profiles")
+        .select("is_dev_admin")
+        .eq("id", user.id)
+        .single();
+    if (!profile?.is_dev_admin) return { error: "Not authorized" };
+
+    // Prevent self-delete
+    if (userId === user.id) return { error: "You cannot delete your own account." };
+
+    // Use service role for cascade deletion
+    const { createClient: createServiceClient } = await import("@supabase/supabase-js");
+    const serviceClient = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+        process.env.SUPABASE_SERVICE_ROLE_KEY || ""
+    );
+
+    // 1. Remove from institution_members
+    await serviceClient
+        .from("institution_members")
+        .delete()
+        .eq("user_id", userId);
+
+    // 2. Remove linked enrollments
+    await serviceClient
+        .from("enrollments")
+        .delete()
+        .eq("linked_user_id", userId);
+
+    // 3. Delete profile
+    const { error: profileError } = await serviceClient
+        .from("arivolam_profiles")
+        .delete()
+        .eq("id", userId);
+
+    if (profileError) return { error: profileError.message };
+
+    // 4. Delete Supabase Auth user
+    const { error: authError } = await serviceClient.auth.admin.deleteUser(userId);
+    if (authError) {
+        console.error("Failed to delete auth user (profile already removed):", authError.message);
+    }
+
+    revalidatePath("/dev-admin/users");
+    return { success: true };
+}
+

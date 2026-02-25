@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
@@ -13,11 +14,26 @@ import {
     ShieldCheck,
     GraduationCap,
     Users,
+    ClipboardList,
+    BarChart3,
+    Bell,
+    Settings,
+    FileText,
+    MessageSquare,
+    Menu,
+    ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { DockNavigation, DockItem } from "@/components/layout/dock-navigation";
 import { AIChatWidget } from "@/components/ai/chat-widget";
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+} from "@/components/ui/sheet";
 
 interface CampusLayoutProps {
     children: React.ReactNode;
@@ -37,38 +53,171 @@ interface CampusLayoutProps {
     };
 }
 
-export function CampusLayout({ children, institution, userRole, slug, campusContext }: CampusLayoutProps) {
-    const pathname = usePathname();
+// Role-based sidebar navigation config
+function getSidebarNav(slug: string, role: string) {
+    const base = `/campus/${slug}`;
 
-    // Base dock items for everyone
-    const dockItems: DockItem[] = [
-        { title: "Dashboard", icon: Home, href: `/campus/${slug}` },
-        { title: "Campus Map", icon: Compass, href: `/campus/${slug}/map` },
-        { title: "Academics", icon: BookOpen, href: `/campus/${slug}/academics` },
-        { title: "Calendar", icon: Calendar, href: `/campus/${slug}/calendar` },
-        { title: "Apps", icon: LayoutGrid, href: `/campus/${slug}/apps` },
+    const common = [
+        { label: "Dashboard", href: base, icon: Home },
+        { label: "Campus Map", href: `${base}/map`, icon: Compass },
+        { label: "Calendar", href: `${base}/calendar`, icon: Calendar },
+        { label: "Apps", href: `${base}/apps`, icon: LayoutGrid },
     ];
 
-    // Role-based dock items
-    if (userRole === "admin") {
-        dockItems.push({ title: "Admin", icon: ShieldCheck, href: `/campus/${slug}/admin` });
-    } else if (userRole === "staff") {
-        dockItems.push({ title: "Teaching", icon: GraduationCap, href: `/campus/${slug}/teacher` });
-    } else if (userRole === "parent") {
-        dockItems.push({ title: "My Child", icon: Users, href: `/campus/${slug}/parent` });
+    const roleNav: Record<string, { label: string; icon: any; href: string }[]> = {
+        student: [
+            { label: "Dashboard", href: `${base}/student`, icon: Home },
+            { label: "Academics", href: `${base}/academics`, icon: BookOpen },
+            { label: "Timetable", href: `${base}/student/timetable`, icon: Calendar },
+            { label: "Assignments", href: `${base}/student/assignments`, icon: ClipboardList },
+            { label: "Grades", href: `${base}/student/grades`, icon: BarChart3 },
+            { label: "Announcements", href: `${base}/student/announcements`, icon: Bell },
+            { label: "Campus Map", href: `${base}/map`, icon: Compass },
+            { label: "Profile", href: `${base}/profile`, icon: User },
+        ],
+        staff: [
+            { label: "Dashboard", href: `${base}/teacher`, icon: Home },
+            { label: "My Classes", href: `${base}/teacher/classes`, icon: GraduationCap },
+            { label: "Students", href: `${base}/teacher/students`, icon: Users },
+            { label: "Assignments", href: `${base}/teacher/assignments`, icon: ClipboardList },
+            { label: "Attendance", href: `${base}/teacher/attendance`, icon: FileText },
+            { label: "Announcements", href: `${base}/teacher/announcements`, icon: MessageSquare },
+            { label: "Campus Map", href: `${base}/map`, icon: Compass },
+            { label: "Profile", href: `${base}/profile`, icon: User },
+        ],
+        parent: [
+            { label: "Dashboard", href: `${base}/parent`, icon: Home },
+            { label: "My Child", href: `${base}/parent/child`, icon: Users },
+            { label: "Attendance", href: `${base}/parent/attendance`, icon: FileText },
+            { label: "Grades", href: `${base}/parent/grades`, icon: BarChart3 },
+            { label: "Announcements", href: `${base}/parent/announcements`, icon: Bell },
+            { label: "Campus Map", href: `${base}/map`, icon: Compass },
+            { label: "Profile", href: `${base}/profile`, icon: User },
+        ],
+        admin: [
+            { label: "Dashboard", href: `${base}/admin`, icon: Home },
+            { label: "User Management", href: `${base}/admin/users`, icon: Users },
+            { label: "Departments", href: `${base}/admin/departments`, icon: GraduationCap },
+            { label: "Modules", href: `${base}/admin/modules`, icon: LayoutGrid },
+            { label: "Announcements", href: `${base}/admin/announcements`, icon: MessageSquare },
+            { label: "Reports", href: `${base}/admin/reports`, icon: BarChart3 },
+            { label: "Settings", href: `${base}/admin/settings`, icon: Settings },
+            { label: "Campus Map", href: `${base}/map`, icon: Compass },
+            { label: "Profile", href: `${base}/profile`, icon: User },
+        ],
+    };
+
+    return roleNav[role] || common;
+}
+
+// Dock items (mobile bottom nav) — simplified per role
+function getDockItems(slug: string, role: string): DockItem[] {
+    const base = `/campus/${slug}`;
+
+    const items: DockItem[] = [
+        { title: "Dashboard", icon: Home, href: role === "admin" ? `${base}/admin` : role === "staff" ? `${base}/teacher` : role === "parent" ? `${base}/parent` : `${base}/student` },
+        { title: "Campus Map", icon: Compass, href: `${base}/map` },
+        { title: "Academics", icon: BookOpen, href: `${base}/academics` },
+        { title: "Calendar", icon: Calendar, href: `${base}/calendar` },
+    ];
+
+    if (role === "admin") {
+        items.push({ title: "Admin", icon: ShieldCheck, href: `${base}/admin` });
+    } else if (role === "staff") {
+        items.push({ title: "Classes", icon: GraduationCap, href: `${base}/teacher` });
+    } else if (role === "parent") {
+        items.push({ title: "My Child", icon: Users, href: `${base}/parent` });
     }
 
-    // Profile always last
-    dockItems.push({ title: "Profile", icon: User, href: `/campus/${slug}/profile` });
+    items.push({ title: "Profile", icon: User, href: `${base}/profile` });
+
+    return items;
+}
+
+export function CampusLayout({ children, institution, userRole, slug, campusContext }: CampusLayoutProps) {
+    const pathname = usePathname();
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+
+    const sidebarNav = getSidebarNav(slug, userRole);
+    const dockItems = getDockItems(slug, userRole);
+
+    const SidebarLinks = ({ onNavigate }: { onNavigate?: () => void }) => (
+        <div className="space-y-1">
+            {sidebarNav.map((item) => {
+                const isActive =
+                    pathname === item.href ||
+                    (item.href !== `/campus/${slug}` && item.href !== `/campus/${slug}/student` && item.href !== `/campus/${slug}/teacher` && item.href !== `/campus/${slug}/parent` && item.href !== `/campus/${slug}/admin` && pathname.startsWith(item.href));
+                const isExactActive = pathname === item.href;
+
+                return (
+                    <Link key={item.href + item.label} href={item.href} onClick={onNavigate}>
+                        <button
+                            className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${isExactActive
+                                ? "bg-primary/10 text-primary shadow-sm"
+                                : isActive
+                                    ? "bg-muted/50 text-foreground"
+                                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                }`}
+                        >
+                            <item.icon className="h-4 w-4 shrink-0" />
+                            <span className="truncate">{item.label}</span>
+                            {isExactActive && (
+                                <ChevronRight className="ml-auto h-3 w-3 text-primary" />
+                            )}
+                        </button>
+                    </Link>
+                );
+            })}
+        </div>
+    );
+
+    const roleColors: Record<string, string> = {
+        student: "text-indigo-600 bg-indigo-500/10",
+        staff: "text-emerald-600 bg-emerald-500/10",
+        parent: "text-orange-600 bg-orange-500/10",
+        admin: "text-rose-600 bg-rose-500/10",
+    };
+    const roleColorClass = roleColors[userRole] || "text-primary bg-primary/10";
 
     return (
-        <div className="relative min-h-screen bg-background pb-24">
+        <div className="relative min-h-screen bg-background">
             {/* Subtle background grid */}
             <div className="fixed inset-0 -z-10 h-full w-full bg-background bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
 
             {/* Header */}
             <header className="sticky top-0 z-50 flex items-center justify-between border-b border-border/40 bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:px-6">
                 <div className="flex items-center gap-3">
+                    {/* Mobile hamburger */}
+                    <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+                        <SheetTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full md:hidden">
+                                <Menu className="h-4 w-4" />
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent side="left" className="w-64 p-0">
+                            <SheetHeader className="border-b border-border/40 px-4 py-4">
+                                <SheetTitle className="flex items-center gap-2 text-sm">
+                                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 overflow-hidden">
+                                        <img
+                                            src={institution.logo_url || "/assets/Logo.svg"}
+                                            alt={institution.short_name || institution.name}
+                                            className="h-6 w-6 object-contain"
+                                        />
+                                    </div>
+                                    <span className="truncate">{institution.short_name || institution.name}</span>
+                                </SheetTitle>
+                            </SheetHeader>
+                            <div className="px-3 py-2">
+                                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${roleColorClass}`}>
+                                    {userRole}
+                                </span>
+                            </div>
+                            <nav className="px-3 pb-3">
+                                <SidebarLinks onNavigate={() => setSidebarOpen(false)} />
+                            </nav>
+                        </SheetContent>
+                    </Sheet>
+
                     <Link href="/campus">
                         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
                             <ArrowLeft className="h-4 w-4" />
@@ -102,16 +251,34 @@ export function CampusLayout({ children, institution, userRole, slug, campusCont
                 </div>
             </header>
 
-            {/* Main content */}
-            <main className="container mx-auto p-4 md:p-8">
-                {children}
-            </main>
+            <div className="flex">
+                {/* Desktop sidebar */}
+                <aside className="hidden w-56 shrink-0 border-r border-border/40 md:block">
+                    <div className="sticky top-[57px] flex flex-col">
+                        <div className="px-4 pt-4 pb-2">
+                            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${roleColorClass}`}>
+                                {userRole} Panel
+                            </span>
+                        </div>
+                        <nav className="flex-1 px-3 pb-4">
+                            <SidebarLinks />
+                        </nav>
+                    </div>
+                </aside>
+
+                {/* Main content */}
+                <main className="flex-1 pb-24 md:pb-8">
+                    <div className="container mx-auto p-4 md:p-8">
+                        {children}
+                    </div>
+                </main>
+            </div>
 
             {/* AI Chat Widget */}
             <AIChatWidget campusContext={campusContext} />
 
-            {/* Dock navigation */}
-            <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2">
+            {/* Dock navigation (mobile only) */}
+            <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 md:hidden">
                 <DockNavigation items={dockItems} />
             </div>
         </div>

@@ -75,38 +75,38 @@ export default async function CampusParentPage({
                         <User className="h-4 w-4 text-orange-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-orange-600 truncate">Pending Link</div>
-                        <p className="text-xs text-muted-foreground">Ask admin to assign</p>
+                        <div className="text-lg font-bold text-orange-600 truncate">Not linked</div>
+                        <p className="text-xs text-muted-foreground">Contact admin to link your child</p>
                     </CardContent>
                 </Card>
                 <Card className="hover:shadow-md transition-shadow">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Recent Attendance</CardTitle>
+                        <CardTitle className="text-sm font-medium">Attendance</CardTitle>
                         <Activity className="h-4 w-4 text-emerald-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">--%</div>
-                        <p className="text-xs text-muted-foreground">No data available</p>
+                        <div className="text-lg font-bold text-muted-foreground">Not available</div>
+                        <p className="text-xs text-muted-foreground">Requires student link</p>
                     </CardContent>
                 </Card>
                 <Card className="hover:shadow-md transition-shadow">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Upcoming Fees</CardTitle>
+                        <CardTitle className="text-sm font-medium">Fee Status</CardTitle>
                         <FileText className="h-4 w-4 text-rose-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-xl font-bold">Nil</div>
-                        <p className="text-xs text-muted-foreground">All cleared</p>
+                        <div className="text-lg font-bold text-muted-foreground">Not configured</div>
+                        <p className="text-xs text-muted-foreground">Fee module is not active</p>
                     </CardContent>
                 </Card>
-                <Card className="hover:shadow-md transition-shadow bg-orange-50 dark:bg-orange-950/30 border-orange-100 dark:border-orange-900">
+                <Card className="hover:shadow-md transition-shadow bg-orange-50/50 dark:bg-orange-950/20 border-orange-100 dark:border-orange-900">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-orange-800 dark:text-orange-300">Notices</CardTitle>
+                        <CardTitle className="text-sm font-medium text-orange-800 dark:text-orange-300">Announcements</CardTitle>
                         <Bell className="h-4 w-4 text-orange-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-orange-700 dark:text-orange-400">1</div>
-                        <p className="text-xs text-orange-600/70 dark:text-orange-300/70">From the Principal</p>
+                        <div className="text-lg font-bold text-orange-700 dark:text-orange-400">None yet</div>
+                        <p className="text-xs text-orange-600/70 dark:text-orange-300/70">No announcements posted</p>
                     </CardContent>
                 </Card>
             </div>
@@ -122,7 +122,7 @@ export default async function CampusParentPage({
                             <FileText className="h-8 w-8 text-slate-300 mx-auto" />
                             <h3 className="font-semibold text-slate-700 dark:text-slate-300">No student linked</h3>
                             <p className="text-sm text-slate-500">
-                                Your account has not yet been linked to a specific student by the school administration. Please contact the office.
+                                Your account has not yet been linked to a student by the school administration. Please contact the office.
                             </p>
                             <Button className="mt-4" variant="outline" asChild>
                                 <Link href={`/campus/${slug}`}>Campus Directory</Link>
@@ -137,13 +137,11 @@ export default async function CampusParentPage({
                         <CardDescription>Messages from teachers and admins.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-4">
-                            <div className="flex items-start gap-3 p-3 rounded-lg bg-orange-50/50 dark:bg-orange-950/20">
-                                <div className="mt-0.5 h-2 w-2 rounded-full bg-orange-500 shrink-0" />
-                                <div>
-                                    <p className="text-sm font-medium leading-tight">Welcome to the Parent Portal!</p>
-                                    <p className="text-xs text-muted-foreground mt-1">Just now</p>
-                                </div>
+                        <div className="flex items-center justify-center py-8 text-center">
+                            <div className="space-y-2">
+                                <Bell className="h-8 w-8 text-slate-300 mx-auto" />
+                                <p className="text-sm text-muted-foreground">No messages yet</p>
+                                <p className="text-xs text-muted-foreground/60">Communications will appear here once available</p>
                             </div>
                         </div>
                     </CardContent>

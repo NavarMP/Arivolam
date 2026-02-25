@@ -11,6 +11,10 @@ import {
     ArrowLeft,
     Shield,
     Menu,
+    MessageSquare,
+    GraduationCap,
+    ClipboardList,
+    Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -27,10 +31,30 @@ interface DevAdminShellProps {
     user: { email: string; name: string };
 }
 
-const NAV_ITEMS = [
-    { label: "Overview", href: "/dev-admin", icon: LayoutDashboard },
-    { label: "Institutions", href: "/dev-admin/institutions", icon: Building2 },
-    { label: "Users", href: "/dev-admin/users", icon: Users },
+const NAV_SECTIONS = [
+    {
+        label: "Developer Settings",
+        icon: Settings,
+        items: [
+            { label: "Overview", href: "/dev-admin", icon: LayoutDashboard },
+            { label: "Users", href: "/dev-admin/users", icon: Users },
+        ],
+    },
+    {
+        label: "Ariv Social",
+        icon: MessageSquare,
+        items: [
+            { label: "Social Dashboard", href: "/dev-admin/social", icon: MessageSquare },
+        ],
+    },
+    {
+        label: "Campusolam",
+        icon: GraduationCap,
+        items: [
+            { label: "Institutions", href: "/dev-admin/campus", icon: Building2 },
+            { label: "Enrollments", href: "/dev-admin/enrollments", icon: ClipboardList },
+        ],
+    },
 ];
 
 export function DevAdminShell({ children, user }: DevAdminShellProps) {
@@ -38,27 +62,39 @@ export function DevAdminShell({ children, user }: DevAdminShellProps) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     const NavLinks = ({ onNavigate }: { onNavigate?: () => void }) => (
-        <>
-            {NAV_ITEMS.map((item) => {
-                const isActive =
-                    pathname === item.href ||
-                    (item.href !== "/dev-admin" &&
-                        pathname.startsWith(item.href));
-                return (
-                    <Link key={item.href} href={item.href} onClick={onNavigate}>
-                        <button
-                            className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${isActive
-                                ? "bg-primary/10 text-primary"
-                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                }`}
-                        >
-                            <item.icon className="h-4 w-4" />
-                            {item.label}
-                        </button>
-                    </Link>
-                );
-            })}
-        </>
+        <div className="space-y-5">
+            {NAV_SECTIONS.map((section) => (
+                <div key={section.label}>
+                    <div className="flex items-center gap-2 px-3 mb-1.5">
+                        <section.icon className="h-3 w-3 text-muted-foreground/60" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
+                            {section.label}
+                        </span>
+                    </div>
+                    <div className="space-y-0.5">
+                        {section.items.map((item) => {
+                            const isActive =
+                                pathname === item.href ||
+                                (item.href !== "/dev-admin" &&
+                                    pathname.startsWith(item.href));
+                            return (
+                                <Link key={item.href} href={item.href} onClick={onNavigate}>
+                                    <button
+                                        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${isActive
+                                            ? "bg-primary/10 text-primary"
+                                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                            }`}
+                                    >
+                                        <item.icon className="h-4 w-4" />
+                                        {item.label}
+                                    </button>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                </div>
+            ))}
+        </div>
     );
 
     return (
@@ -94,7 +130,7 @@ export function DevAdminShell({ children, user }: DevAdminShellProps) {
                                     </span>
                                 </SheetTitle>
                             </SheetHeader>
-                            <nav className="space-y-1 p-3">
+                            <nav className="p-3">
                                 <NavLinks onNavigate={() => setSidebarOpen(false)} />
                             </nav>
                             <div className="absolute bottom-0 left-0 right-0 border-t border-border/40 p-4">
@@ -146,7 +182,7 @@ export function DevAdminShell({ children, user }: DevAdminShellProps) {
             <div className="flex">
                 {/* Sidebar (desktop only) */}
                 <aside className="hidden w-56 shrink-0 border-r border-border/40 md:block">
-                    <nav className="sticky top-[57px] space-y-1 p-3">
+                    <nav className="sticky top-[57px] p-3">
                         <NavLinks />
                     </nav>
                 </aside>

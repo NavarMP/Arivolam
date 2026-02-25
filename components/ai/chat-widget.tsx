@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { usePathname } from "next/navigation";
 import {
     MessageCircle,
     X,
@@ -15,6 +16,9 @@ import {
     Calendar,
     HelpCircle,
     Trash2,
+    PenSquare,
+    Search,
+    Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useScrollDirection } from "@/hooks/use-scroll-direction";
@@ -35,19 +39,26 @@ interface CampusContext {
 
 interface AIChatWidgetProps {
     campusContext?: CampusContext;
+    mode?: "campus" | "social" | "home";
 }
 
-// ─── Quick action buttons ───
-const QUICK_ACTIONS = [
+// ─── Quick action buttons per mode ───
+const CAMPUS_QUICK_ACTIONS = [
     { label: "Navigate campus", icon: MapPin, prompt: "Help me navigate around the campus. What buildings are available?" },
     { label: "Academics help", icon: BookOpen, prompt: "Can you help me with academic information?" },
     { label: "Events today", icon: Calendar, prompt: "What events or activities might be happening on campus today?" },
     { label: "How to use Arivolam", icon: HelpCircle, prompt: "How do I use the Arivolam platform? What features are available?" },
 ];
 
+const SOCIAL_QUICK_ACTIONS = [
+    { label: "Create a post", icon: PenSquare, prompt: "How do I create a post on Ariv Social? What types of content can I share?" },
+    { label: "Find people", icon: Search, prompt: "How do I find and connect with other users on Arivolam?" },
+    { label: "Explore features", icon: Sparkles, prompt: "What features does Ariv Social offer? Tell me about the social feed." },
+    { label: "About Arivolam", icon: HelpCircle, prompt: "What is Arivolam and what can I do on this platform?" },
+];
+
 // ─── Simple markdown-like renderer ───
 function renderMessage(text: string) {
-    // Split by **bold** and render
     const parts = text.split(/(\*\*[^*]+\*\*)/g);
     return parts.map((part, i) => {
         if (part.startsWith("**") && part.endsWith("**")) {
@@ -57,7 +68,6 @@ function renderMessage(text: string) {
                 </strong>
             );
         }
-        // Handle line breaks
         const lines = part.split("\n");
         return lines.map((line, j) => (
             <span key={`${i}-${j}`}>
@@ -72,7 +82,8 @@ function renderMessage(text: string) {
     });
 }
 
-export function AIChatWidget({ campusContext }: AIChatWidgetProps) {
+export function AIChatWidget({ campusContext, mode: propMode }: AIChatWidgetProps) {
+    const pathname = usePathname();
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState("");
@@ -81,6 +92,18 @@ export function AIChatWidget({ campusContext }: AIChatWidgetProps) {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const { isNavVisible } = useScrollDirection();
+
+    // Detect mode from pathname if not provided
+    const mode = propMode || (pathname.startsWith("/campus") ? "campus" : "social");
+    const quickActions = mode === "campus" ? CAMPUS_QUICK_ACTIONS : SOCIAL_QUICK_ACTIONS;
+
+    const modeLabels = {
+        campus: campusContext?.institutionName
+            ? `${campusContext.institutionName} assistant`
+            : "Your campus assistant",
+        social: "Ariv Social assistant",
+        home: "Your Arivolam assistant",
+    };
 
     // Scroll to bottom on new messages
     useEffect(() => {
@@ -123,6 +146,7 @@ export function AIChatWidget({ campusContext }: AIChatWidgetProps) {
                         message: text.trim(),
                         history,
                         campusData: campusContext,
+                        mode,
                     }),
                 });
 
@@ -154,7 +178,7 @@ export function AIChatWidget({ campusContext }: AIChatWidgetProps) {
                 setIsLoading(false);
             }
         },
-        [isLoading, messages, campusContext]
+        [isLoading, messages, campusContext, mode]
     );
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -209,9 +233,7 @@ export function AIChatWidget({ campusContext }: AIChatWidgetProps) {
                                 <div>
                                     <h3 className="text-sm font-semibold">Arivolam AI</h3>
                                     <p className="text-[10px] text-muted-foreground">
-                                        {campusContext?.institutionName
-                                            ? `${campusContext.institutionName} assistant`
-                                            : "Your campus assistant"}
+                                        {modeLabels[mode]}
                                     </p>
                                 </div>
                             </div>
@@ -253,8 +275,9 @@ export function AIChatWidget({ campusContext }: AIChatWidgetProps) {
                                         Hi! I&apos;m Arivolam AI ✨
                                     </h4>
                                     <p className="mt-1 text-xs text-muted-foreground max-w-[260px]">
-                                        I can help you navigate campus, answer academic questions, and
-                                        explore Arivolam features.
+                                        {mode === "campus"
+                                            ? "I can help you navigate campus, answer academic questions, and explore Arivolam features."
+                                            : "I can help you with Ariv Social features, creating posts, finding people, and exploring the platform."}
                                     </p>
                                 </motion.div>
                             )}
@@ -267,7 +290,7 @@ export function AIChatWidget({ campusContext }: AIChatWidgetProps) {
                                     transition={{ delay: 0.2 }}
                                     className="grid grid-cols-2 gap-2"
                                 >
-                                    {QUICK_ACTIONS.map((action) => (
+                                    {quickActions.map((action) => (
                                         <button
                                             key={action.label}
                                             onClick={() => sendMessage(action.prompt)}
