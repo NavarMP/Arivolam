@@ -18,7 +18,7 @@ import {
     X, Save, Trash2, MapPin, Building2, GraduationCap,
     FlaskConical, Library, BedDouble, Moon, Utensils,
     Trophy, LogIn, Car, Landmark, Droplets, Wifi, Heart,
-    Coffee, Bus, Dumbbell, Star, Flag, Compass,
+    Coffee, Bus, Dumbbell, Star, Flag, Compass, Layers,
 } from "lucide-react";
 
 // ─── Types ───
@@ -82,6 +82,7 @@ interface MapPropertyPanelProps {
     onSave: () => void;
     onDelete: () => void;
     onClose: () => void;
+    onManageFloors?: () => void;
     saving: boolean;
 }
 
@@ -159,6 +160,7 @@ export function MapPropertyPanel({
     onSave,
     onDelete,
     onClose,
+    onManageFloors,
     saving,
 }: MapPropertyPanelProps) {
     if (!selectedItem) return null;
@@ -353,6 +355,20 @@ export function MapPropertyPanel({
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* Manage Floors Button */}
+                                {onManageFloors && selectedItem.data.id && (
+                                    <div className="pt-2">
+                                        <Button
+                                            variant="outline"
+                                            className="w-full gap-2 border-primary/20 hover:border-primary/50"
+                                            onClick={onManageFloors}
+                                        >
+                                            <Layers className="h-4 w-4 text-primary" />
+                                            Manage Floor Plans
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -533,6 +549,6 @@ export function MapPropertyPanel({
                     </div>
                 </ScrollArea>
             </motion.div>
-        </AnimatePresence>
+        </AnimatePresence >
     );
 }

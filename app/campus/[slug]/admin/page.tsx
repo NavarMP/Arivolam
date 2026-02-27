@@ -119,6 +119,12 @@ export default async function CampusAdminPage({
                                         Campus Map Editor
                                     </Link>
                                 </Button>
+                                <Button variant="ghost" className="justify-start w-full gap-2 text-muted-foreground" asChild>
+                                    <Link href={`/campus/${slug}/admin/map-guide`}>
+                                        <BookOpen className="h-4 w-4" />
+                                        Map Editor Guide
+                                    </Link>
+                                </Button>
                             </div>
                         </CardContent>
                     </Card>

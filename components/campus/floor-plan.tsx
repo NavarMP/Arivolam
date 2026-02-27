@@ -22,14 +22,16 @@ import {
 } from "lucide-react";
 
 // Dynamic import react-konva (canvas library, needs browser)
-const Stage = dynamic(() => import("react-konva").then((m) => m.Stage), { ssr: false });
-const KonvaLayer = dynamic(() => import("react-konva").then((m) => m.Layer), { ssr: false });
-const Rect = dynamic(() => import("react-konva").then((m) => m.Rect), { ssr: false });
-const KonvaCircle = dynamic(() => import("react-konva").then((m) => m.Circle), { ssr: false });
-const Text = dynamic(() => import("react-konva").then((m) => m.Text), { ssr: false });
-const Line = dynamic(() => import("react-konva").then((m) => m.Line), { ssr: false });
-const Group = dynamic(() => import("react-konva").then((m) => m.Group), { ssr: false });
-const KonvaTransformer = dynamic(() => import("react-konva").then((m) => m.Transformer), { ssr: false });
+// Wrap named exports with { default: ... } to prevent Turbopack's convertModule
+// from receiving a string instead of a component (fixes "Cannot use 'in' operator" crash)
+const Stage = dynamic(() => import("react-konva").then((m) => ({ default: m.Stage })), { ssr: false });
+const KonvaLayer = dynamic(() => import("react-konva").then((m) => ({ default: m.Layer })), { ssr: false });
+const Rect = dynamic(() => import("react-konva").then((m) => ({ default: m.Rect })), { ssr: false });
+const KonvaCircle = dynamic(() => import("react-konva").then((m) => ({ default: m.Circle })), { ssr: false });
+const Text = dynamic(() => import("react-konva").then((m) => ({ default: m.Text })), { ssr: false });
+const Line = dynamic(() => import("react-konva").then((m) => ({ default: m.Line })), { ssr: false });
+const Group = dynamic(() => import("react-konva").then((m) => ({ default: m.Group })), { ssr: false });
+const KonvaTransformer = dynamic(() => import("react-konva").then((m) => ({ default: m.Transformer })), { ssr: false });
 
 // ─── Types ───
 
@@ -435,7 +437,7 @@ export function FloorPlanEditor({
         >
             <div className="flex flex-1 m-4 rounded-2xl overflow-hidden shadow-2xl border bg-background">
                 {/* Left toolbar */}
-                <div className="w-14 flex flex-col items-center gap-1 py-3 border-r bg-muted/30">
+                <div className="w-14 flex flex-col items-center gap-1 py-3 border-r bg-muted/30 overflow-y-auto overflow-x-hidden">
                     {TOOLS.map((t) => {
                         const Icon = t.icon;
                         const isActive = tool === t.mode;
