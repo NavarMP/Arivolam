@@ -12,6 +12,7 @@ import {
     GraduationCap, Dumbbell, ChevronDown, Layers, Moon, Heart,
     Wifi, Bus, Droplets, Landmark, LogIn, Route, Clock, ChevronRight,
     Library, FlaskConical, BedDouble, Trophy, Utensils, ChevronUp,
+    Locate, Compass, Star, Flag,
 } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 import dynamic from "next/dynamic";
@@ -36,6 +37,14 @@ const Circle = dynamic(
     () => import("react-leaflet").then((mod) => mod.Circle),
     { ssr: false }
 );
+const Polygon = dynamic(
+    () => import("react-leaflet").then((mod) => mod.Polygon),
+    { ssr: false }
+);
+const Tooltip = dynamic(
+    () => import("react-leaflet").then((mod) => mod.Tooltip),
+    { ssr: false }
+);
 
 // ─── Types ───
 interface Building {
@@ -47,10 +56,13 @@ interface Building {
     floors: number;
     latitude: number;
     longitude: number;
+    geo_polygon?: any;
     icon: string;
     color: string;
     operating_hours: string | null;
     sort_order: number;
+    label_visible_zoom?: number;
+    show_polygon?: boolean;
     rooms?: Room[];
 }
 
@@ -112,6 +124,10 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string; style?:
     coffee: Coffee,
     bus: Bus,
     "map-pin": MapPin,
+    dumbbell: Dumbbell,
+    star: Star,
+    flag: Flag,
+    compass: Compass,
 };
 
 // ─── Category filters ───
@@ -147,7 +163,7 @@ function aStarPath(
     }
 
     const heuristic = (a: NavNode, b: NavNode) => {
-        const dx = (a.latitude - b.latitude) * 111139; // degrees to meters approx
+        const dx = (a.latitude - b.latitude) * 111139;
         const dy = (a.longitude - b.longitude) * 111139 * Math.cos((a.latitude * Math.PI) / 180);
         return Math.sqrt(dx * dx + dy * dy);
     };
@@ -175,7 +191,6 @@ function aStarPath(
         }
 
         if (current === endId) {
-            // Reconstruct path
             const path: NavNode[] = [];
             let c = endId;
             while (c) {
@@ -198,7 +213,33 @@ function aStarPath(
         }
     }
 
-    return null; // no path found
+    return null;
+}
+
+// ─── Zoom level tracker component ───
+function ZoomTracker({ onZoomChange }: { onZoomChange: (zoom: number) => void }) {
+    useEffect(() => {
+        const container = document.querySelector(".leaflet-container");
+        if (!container) return;
+
+        const observer = new MutationObserver(() => {
+            const zoomEl = container.querySelector(".leaflet-proxy");
+            if (zoomEl) {
+                const transform = (zoomEl as HTMLElement).style.transform;
+                // Extract zoom from CSS transform
+            }
+        });
+
+        // Use the map's zoomend event instead
+        const handleZoom = () => {
+            // We can't directly access the map instance from here, so we use a workaround
+            // The zoom level is tracked via React state in the parent
+        };
+
+        return () => observer.disconnect();
+    }, [onZoomChange]);
+
+    return null;
 }
 
 // ─── Main Component ───
@@ -216,7 +257,6 @@ export function CampusMap({
     navNodes: propNavNodes,
     navEdges: propNavEdges,
 }: CampusMapProps) {
-    // Fallback data (will be overridden by Supabase data when available)
     const buildings = propBuildings ?? DEFAULT_BUILDINGS;
     const pois = propPois ?? DEFAULT_POIS;
     const navNodes = propNavNodes ?? DEFAULT_NAV_NODES;
@@ -229,23 +269,55 @@ export function CampusMap({
     const [showSearch, setShowSearch] = useState(false);
     const [tileMode, setTileMode] = useState<"light" | "dark" | "satellite">("light");
     const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
+    const [positionAccuracy, setPositionAccuracy] = useState<number>(0);
     const [routePath, setRoutePath] = useState<[number, number][] | null>(null);
     const [routeInfo, setRouteInfo] = useState<{ distance: number; time: number } | null>(null);
     const [showDirectory, setShowDirectory] = useState(false);
+    const [currentZoom, setCurrentZoom] = useState(18);
+    const [isTracking, setIsTracking] = useState(false);
     const searchInputRef = useRef<HTMLInputElement>(null);
+    const watchIdRef = useRef<number | null>(null);
+    const mapInstanceRef = useRef<any>(null);
 
     useEffect(() => {
         import("leaflet").then((L) => setL(L));
     }, []);
 
-    // Get user's position
+    // ─── Live Location Tracking with watchPosition ───
     useEffect(() => {
-        if (typeof navigator !== "undefined" && navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => setUserPosition([pos.coords.latitude, pos.coords.longitude]),
-                () => { } // silently fail
-            );
-        }
+        if (typeof navigator === "undefined" || !navigator.geolocation) return;
+
+        // Start with getCurrentPosition for immediate fix
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                setUserPosition([pos.coords.latitude, pos.coords.longitude]);
+                setPositionAccuracy(pos.coords.accuracy);
+            },
+            () => { }
+        );
+
+        // Then use watchPosition for live tracking
+        const watchId = navigator.geolocation.watchPosition(
+            (pos) => {
+                setUserPosition([pos.coords.latitude, pos.coords.longitude]);
+                setPositionAccuracy(pos.coords.accuracy);
+                setIsTracking(true);
+            },
+            () => {
+                setIsTracking(false);
+            },
+            {
+                enableHighAccuracy: true,
+                maximumAge: 5000,
+                timeout: 15000,
+            }
+        );
+
+        watchIdRef.current = watchId;
+
+        return () => {
+            navigator.geolocation.clearWatch(watchId);
+        };
     }, []);
 
     // Focus search input when opened
@@ -254,6 +326,46 @@ export function CampusMap({
             searchInputRef.current.focus();
         }
     }, [showSearch]);
+
+    // Re-center map on user
+    const centerOnUser = useCallback(() => {
+        if (!userPosition || !mapInstanceRef.current) return;
+        mapInstanceRef.current.setView(userPosition, 19, { animate: true });
+    }, [userPosition]);
+
+    // Map ready handler to capture map instance
+    const MapEvents = useCallback(() => {
+        useEffect(() => {
+            const container = document.querySelector(".campus-map-container");
+            if (!container) return;
+
+            // Try to get the Leaflet map instance
+            const interval = setInterval(() => {
+                try {
+                    const leafletContainer = container as any;
+                    if (leafletContainer._leaflet_id) {
+                        // Access map via Leaflet's internal registry
+                        import("leaflet").then((L) => {
+                            const mapKey = Object.keys((L as any).Map?._maps || {}).find(
+                                (key) => (L as any).Map._maps[key]._container === container
+                            );
+                            if (mapKey) {
+                                mapInstanceRef.current = (L as any).Map._maps[mapKey];
+                                // Listen for zoom changes
+                                mapInstanceRef.current.on("zoomend", () => {
+                                    setCurrentZoom(mapInstanceRef.current.getZoom());
+                                });
+                                clearInterval(interval);
+                            }
+                        });
+                    }
+                } catch { }
+            }, 500);
+
+            return () => clearInterval(interval);
+        }, []);
+        return null;
+    }, []);
 
     const filteredBuildings = buildings.filter((b) => {
         const matchCategory = selectedCategory === "all" || b.category === selectedCategory;
@@ -278,12 +390,18 @@ export function CampusMap({
         ...pois.filter((p) =>
             p.name.toLowerCase().includes(searchQuery.toLowerCase())
         ).map((p) => ({ type: "poi" as const, item: p })),
+        // Also search rooms
+        ...buildings.flatMap((b) =>
+            (b.rooms || []).filter((r) =>
+                r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (r.room_number || "").toLowerCase().includes(searchQuery.toLowerCase())
+            ).map((r) => ({ type: "room" as const, item: r, building: b }))
+        ),
     ];
 
     // Navigate to a building
     const navigateToBuilding = useCallback(
         (building: Building) => {
-            // Find nearest nav node to the building
             const buildingNode = navNodes.find(
                 (n) => n.building_id === building.id && n.node_type === "entrance"
             );
@@ -292,7 +410,6 @@ export function CampusMap({
                 return;
             }
 
-            // Find nearest nav node to user (or main gate)
             let startNode = navNodes.find((n) => n.label === "Main Gate");
             if (userPosition) {
                 let minDist = Infinity;
@@ -314,7 +431,6 @@ export function CampusMap({
             if (path) {
                 const coords = path.map((n): [number, number] => [n.latitude, n.longitude]);
                 setRoutePath(coords);
-                // Calculate total distance
                 let totalWeight = 0;
                 for (let i = 0; i < path.length - 1; i++) {
                     const edge = navEdges.find(
@@ -322,9 +438,17 @@ export function CampusMap({
                     );
                     if (edge) totalWeight += edge.weight;
                 }
-                setRouteInfo({ distance: totalWeight, time: Math.ceil(totalWeight / 80) }); // ~80m/min walk
+                setRouteInfo({ distance: totalWeight, time: Math.ceil(totalWeight / 80) });
             }
             setSelectedBuilding(building);
+
+            // Pan map to show the route
+            if (mapInstanceRef.current && path) {
+                const bounds = path.map((n) => [n.latitude, n.longitude] as [number, number]);
+                try {
+                    mapInstanceRef.current.fitBounds(bounds, { padding: [60, 60], maxZoom: 19 });
+                } catch { }
+            }
         },
         [navNodes, navEdges, userPosition]
     );
@@ -346,6 +470,7 @@ export function CampusMap({
             </div>
         );
 
+    // ─── Icon factories ───
     const buildingIcon = (color: string) =>
         new L.DivIcon({
             className: "custom-marker",
@@ -365,6 +490,8 @@ export function CampusMap({
             health: "#ef4444",
             food: "#d97706",
             transport: "#8b5cf6",
+            sports: "#10b981",
+            emergency: "#dc2626",
         };
         return new L.DivIcon({
             className: "custom-poi-marker",
@@ -383,8 +510,12 @@ export function CampusMap({
         iconAnchor: [10, 10],
     });
 
-    // SIAS center coordinates
-    const mapCenter: [number, number] = [11.2274, 75.9104];
+    const mapCenter: [number, number] = buildings.length > 0
+        ? [
+            buildings.reduce((s, b) => s + b.latitude, 0) / buildings.length,
+            buildings.reduce((s, b) => s + b.longitude, 0) / buildings.length,
+        ]
+        : [11.2274, 75.9104];
 
     return (
         <div className="relative h-[calc(100vh-8rem)] w-full overflow-hidden rounded-xl border shadow-lg">
@@ -393,7 +524,7 @@ export function CampusMap({
                 center={mapCenter}
                 zoom={18}
                 scrollWheelZoom={true}
-                className="h-full w-full z-0"
+                className="h-full w-full z-0 campus-map-container"
                 zoomControl={false}
             >
                 <TileLayer
@@ -401,7 +532,41 @@ export function CampusMap({
                     url={tileUrl}
                 />
 
-                {/* Building markers */}
+                <MapEvents />
+
+                {/* ── Building Polygons ── */}
+                {filteredBuildings
+                    .filter((b) => b.geo_polygon && b.show_polygon !== false)
+                    .map((b) => {
+                        const coords = b.geo_polygon?.coordinates?.[0]?.map(
+                            (c: number[]) => [c[1], c[0]] as [number, number]
+                        );
+                        if (!coords) return null;
+                        return (
+                            <Polygon
+                                key={`poly-${b.id}`}
+                                positions={coords}
+                                pathOptions={{
+                                    color: b.color,
+                                    fillColor: b.color,
+                                    fillOpacity: 0.15,
+                                    weight: 2,
+                                }}
+                                eventHandlers={{
+                                    click: () => {
+                                        setSelectedBuilding(b);
+                                        clearRoute();
+                                    },
+                                }}
+                            >
+                                <Tooltip sticky>
+                                    <span className="text-xs font-medium">{b.name}</span>
+                                </Tooltip>
+                            </Polygon>
+                        );
+                    })}
+
+                {/* ── Building markers with zoom-level labels ── */}
                 {filteredBuildings.map((b) => (
                     <Marker
                         key={b.id}
@@ -413,44 +578,99 @@ export function CampusMap({
                                 clearRoute();
                             },
                         }}
-                    />
+                    >
+                        {currentZoom >= (b.label_visible_zoom || 17) && (
+                            <Tooltip permanent direction="top" offset={[0, -32]} className="building-label">
+                                <span className="text-[10px] font-semibold">
+                                    {currentZoom >= 18 ? b.name : (b.short_name || b.name)}
+                                </span>
+                            </Tooltip>
+                        )}
+                    </Marker>
                 ))}
 
-                {/* POI markers */}
+                {/* ── POI markers ── */}
                 {filteredPois.map((p) => (
                     <Marker
                         key={p.id}
                         position={[p.latitude, p.longitude]}
                         icon={poiIcon(p.category)}
-                    />
+                    >
+                        {currentZoom >= 18 && (
+                            <Tooltip permanent direction="top" offset={[0, -24]} className="poi-label">
+                                <span className="text-[9px] text-muted-foreground">{p.name}</span>
+                            </Tooltip>
+                        )}
+                    </Marker>
                 ))}
 
-                {/* User position */}
+                {/* ── Room markers (visible at high zoom when building selected) ── */}
+                {currentZoom >= 19 && selectedBuilding?.rooms?.map((room) => {
+                    if (!room.latitude || !room.longitude) return null;
+                    const roomIcon = new L.DivIcon({
+                        className: "room-marker",
+                        html: `<div style="width:18px;height:18px;border-radius:4px;background:${selectedBuilding.color}40;border:1.5px solid ${selectedBuilding.color};display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:600;color:${selectedBuilding.color};">
+                            ${room.room_number || "•"}
+                        </div>`,
+                        iconSize: [18, 18],
+                        iconAnchor: [9, 9],
+                    });
+                    return (
+                        <Marker
+                            key={`room-${room.id}`}
+                            position={[room.latitude, room.longitude]}
+                            icon={roomIcon}
+                        >
+                            <Tooltip direction="top" offset={[0, -10]}>
+                                <div className="text-[10px]">
+                                    <p className="font-semibold">{room.name}</p>
+                                    <p className="text-muted-foreground capitalize">
+                                        {room.room_type.replace("_", " ")}
+                                        {room.capacity && ` · ${room.capacity} seats`}
+                                    </p>
+                                </div>
+                            </Tooltip>
+                        </Marker>
+                    );
+                })}
+
+                {/* ── User position with accuracy circle ── */}
                 {userPosition && (
                     <>
+                        {/* Accuracy circle */}
                         <Circle
                             center={userPosition}
-                            radius={15}
+                            radius={Math.min(positionAccuracy || 15, 200)}
                             pathOptions={{
                                 color: "#3b82f6",
                                 fillColor: "#3b82f6",
-                                fillOpacity: 0.1,
+                                fillOpacity: 0.08,
                                 weight: 1,
+                                dashArray: "4,4",
                             }}
                         />
-                        <Marker position={userPosition} icon={userIcon} />
+                        {/* User dot */}
+                        <Marker position={userPosition} icon={userIcon}>
+                            <Tooltip direction="top" offset={[0, -12]}>
+                                <span className="text-[10px]">
+                                    You are here {positionAccuracy ? `(±${Math.round(positionAccuracy)}m)` : ""}
+                                </span>
+                            </Tooltip>
+                        </Marker>
                     </>
                 )}
 
-                {/* Route polyline */}
+                {/* ── Route polyline ── */}
                 {routePath && (
                     <Polyline
                         positions={routePath}
                         pathOptions={{
                             color: "#3b82f6",
-                            weight: 4,
-                            opacity: 0.8,
-                            dashArray: "10, 10",
+                            weight: 5,
+                            opacity: 0.85,
+                            dashArray: "12, 8",
+                            lineCap: "round",
+                            lineJoin: "round",
                         }}
                     />
                 )}
@@ -500,24 +720,27 @@ export function CampusMap({
                         <motion.div
                             initial={{ opacity: 0, y: -8 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="absolute left-0 right-0 top-full mt-2 rounded-xl bg-background/95 backdrop-blur-sm border shadow-lg overflow-hidden max-h-64"
+                            className="absolute left-0 right-0 top-full mt-2 rounded-xl bg-background/95 backdrop-blur-sm border shadow-lg overflow-hidden max-h-72"
                         >
-                            <ScrollArea className="max-h-64">
+                            <ScrollArea className="max-h-72">
                                 {allSearchResults.length === 0 ? (
                                     <div className="p-4 text-center text-sm text-muted-foreground">
                                         No results found
                                     </div>
                                 ) : (
-                                    allSearchResults.map((result) => {
+                                    allSearchResults.map((result, idx) => {
                                         const isBuilding = result.type === "building";
-                                        const item = result.item;
+                                        const isRoom = result.type === "room";
                                         return (
                                             <button
-                                                key={item.id}
+                                                key={`${result.type}-${isRoom ? (result as any).item.id : (result as any).item.id}-${idx}`}
                                                 className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors border-b last:border-0"
                                                 onClick={() => {
                                                     if (isBuilding) {
-                                                        setSelectedBuilding(item as Building);
+                                                        setSelectedBuilding(result.item as Building);
+                                                    } else if (isRoom) {
+                                                        const r = result as any;
+                                                        setSelectedBuilding(r.building);
                                                     }
                                                     setShowSearch(false);
                                                     setSearchQuery("");
@@ -527,27 +750,54 @@ export function CampusMap({
                                                     className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
                                                     style={{
                                                         backgroundColor: isBuilding
-                                                            ? (item as Building).color + "20"
-                                                            : "#64748b20",
+                                                            ? (result.item as Building).color + "20"
+                                                            : isRoom
+                                                                ? (result as any).building.color + "20"
+                                                                : "#64748b20",
                                                     }}
                                                 >
                                                     {isBuilding ? (
                                                         <Building2
                                                             className="h-4 w-4"
-                                                            style={{ color: (item as Building).color }}
+                                                            style={{ color: (result.item as Building).color }}
                                                         />
+                                                    ) : isRoom ? (
+                                                        <Building2 className="h-4 w-4 text-muted-foreground" />
                                                     ) : (
                                                         <MapPin className="h-4 w-4 text-muted-foreground" />
                                                     )}
                                                 </div>
-                                                <div>
-                                                    <p className="text-sm font-medium">{item.name}</p>
-                                                    <p className="text-xs text-muted-foreground">
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-medium truncate">
+                                                        {isRoom
+                                                            ? `${(result as any).item.name}${(result as any).item.room_number ? ` (${(result as any).item.room_number})` : ""}`
+                                                            : result.item.name
+                                                        }
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground truncate">
                                                         {isBuilding
-                                                            ? (item as Building).category
-                                                            : (item as POI).category}
+                                                            ? (result.item as Building).category
+                                                            : isRoom
+                                                                ? `${(result as any).building.name} · ${(result as any).item.room_type.replace("_", " ")}`
+                                                                : (result.item as POI).category}
                                                     </p>
                                                 </div>
+                                                {/* Quick navigate button */}
+                                                {isBuilding && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-7 w-7 shrink-0"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            navigateToBuilding(result.item as Building);
+                                                            setShowSearch(false);
+                                                            setSearchQuery("");
+                                                        }}
+                                                    >
+                                                        <Navigation className="h-3.5 w-3.5 text-primary" />
+                                                    </Button>
+                                                )}
                                             </button>
                                         );
                                     })
@@ -585,7 +835,7 @@ export function CampusMap({
                 </div>
             </div>
 
-            {/* Tile mode + zoom controls (right side) */}
+            {/* Right side controls: tile mode + locate me */}
             <div className="absolute right-4 top-4 z-[1000] flex flex-col gap-2">
                 <div className="flex flex-col gap-1 rounded-xl bg-background/95 p-1 shadow-lg backdrop-blur-sm border">
                     <Button
@@ -616,6 +866,18 @@ export function CampusMap({
                         <MapPin className="h-4 w-4" />
                     </Button>
                 </div>
+
+                {/* Locate me button */}
+                <Button
+                    variant="secondary"
+                    size="icon"
+                    className={`h-10 w-10 rounded-xl shadow-lg ${isTracking ? "ring-2 ring-blue-500/50" : ""}`}
+                    onClick={centerOnUser}
+                    title="Center on my location"
+                    disabled={!userPosition}
+                >
+                    <Locate className={`h-4 w-4 ${isTracking ? "text-blue-500" : ""}`} />
+                </Button>
             </div>
 
             {/* Building directory toggle (bottom-left) */}
@@ -717,6 +979,19 @@ export function CampusMap({
                                                         {b.category} • {b.floors} floor{b.floors > 1 ? "s" : ""}
                                                     </p>
                                                 </div>
+                                                {/* Quick navigate */}
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 shrink-0"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        navigateToBuilding(b);
+                                                        setShowDirectory(false);
+                                                    }}
+                                                >
+                                                    <Navigation className="h-4 w-4 text-primary" />
+                                                </Button>
                                                 <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                                             </button>
                                         );
@@ -812,17 +1087,24 @@ export function CampusMap({
                                             {selectedBuilding.rooms.map((room) => (
                                                 <div
                                                     key={room.id}
-                                                    className="rounded-lg border p-3 bg-muted/30"
+                                                    className="rounded-lg border p-3 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                                                    onClick={() => {
+                                                        // Navigate to room's building
+                                                        navigateToBuilding(selectedBuilding);
+                                                    }}
                                                 >
                                                     <div className="flex items-center justify-between">
                                                         <p className="text-sm font-medium">
                                                             {room.name}
                                                         </p>
-                                                        {room.room_number && (
-                                                            <Badge variant="secondary" className="text-[10px]">
-                                                                {room.room_number}
-                                                            </Badge>
-                                                        )}
+                                                        <div className="flex items-center gap-1.5">
+                                                            {room.room_number && (
+                                                                <Badge variant="secondary" className="text-[10px]">
+                                                                    {room.room_number}
+                                                                </Badge>
+                                                            )}
+                                                            <Navigation className="h-3 w-3 text-muted-foreground" />
+                                                        </div>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground capitalize mt-0.5">
                                                         {room.room_type.replace("_", " ")}
@@ -894,7 +1176,6 @@ const DEFAULT_NAV_NODES: NavNode[] = [
 ];
 
 const DEFAULT_NAV_EDGES: NavEdge[] = [
-    // Entrance to junctions
     { id: "e1", from_node_id: "n1", to_node_id: "n3", weight: 25 },
     { id: "e2", from_node_id: "n3", to_node_id: "n1", weight: 25 },
     { id: "e3", from_node_id: "n1", to_node_id: "n2", weight: 30 },
@@ -903,7 +1184,6 @@ const DEFAULT_NAV_EDGES: NavEdge[] = [
     { id: "e6", from_node_id: "n4", to_node_id: "n3", weight: 30 },
     { id: "e7", from_node_id: "n4", to_node_id: "n5", weight: 30 },
     { id: "e8", from_node_id: "n5", to_node_id: "n4", weight: 30 },
-    // Junction to buildings
     { id: "e9", from_node_id: "n3", to_node_id: "n9", weight: 10 },
     { id: "e10", from_node_id: "n9", to_node_id: "n3", weight: 10 },
     { id: "e11", from_node_id: "n4", to_node_id: "n6", weight: 15 },

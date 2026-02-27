@@ -29,7 +29,8 @@ export default async function MapPage({
         .from("campus_buildings")
         .select(`
             id, name, short_name, description, category, floors,
-            latitude, longitude, icon, color, operating_hours, sort_order,
+            latitude, longitude, geo_polygon, icon, color,
+            operating_hours, sort_order, label_visible_zoom, show_polygon,
             campus_rooms (
                 id, building_id, name, room_number, room_type, capacity,
                 description, latitude, longitude

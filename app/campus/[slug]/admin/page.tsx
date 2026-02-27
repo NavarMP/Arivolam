@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, GraduationCap, Settings, Bell, BookOpen } from "lucide-react";
+import { Users, GraduationCap, Settings, Bell, BookOpen, Map } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { PendingWidget } from "./components/pending-widget";
@@ -113,8 +113,11 @@ export default async function CampusAdminPage({
                                 <Button variant="outline" className="justify-start w-full" disabled>
                                     Library System (Soon)
                                 </Button>
-                                <Button variant="outline" className="justify-start w-full" disabled>
-                                    Campus Map Editor (Soon)
+                                <Button variant="outline" className="justify-start w-full gap-2" asChild>
+                                    <Link href={`/campus/${slug}/admin/map-editor`}>
+                                        <Map className="h-4 w-4" />
+                                        Campus Map Editor
+                                    </Link>
                                 </Button>
                             </div>
                         </CardContent>
