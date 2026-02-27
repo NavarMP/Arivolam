@@ -7,8 +7,6 @@ import {
     MessageCircle,
     X,
     Send,
-    Sparkles,
-    Bot,
     User,
     Loader2,
     MapPin,
@@ -19,9 +17,15 @@ import {
     PenSquare,
     Search,
     Users,
+    Sparkles,
 } from "lucide-react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { useScrollDirection } from "@/hooks/use-scroll-direction";
+
+const ArivAILogo = ({ className }: { className?: string }) => (
+    <Image src="/assets/Ariv AI Logo.svg" alt="Ariv AI" width={24} height={24} className={className} />
+);
 
 // ─── Types ───
 interface ChatMessage {
@@ -206,7 +210,7 @@ export function AIChatWidget({ campusContext, mode: propMode }: AIChatWidgetProp
                         className={`fixed bottom-24 right-4 z-[60] flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30 md:bottom-6 md:right-6 ${!isNavVisible ? 'translate-y-[calc(100%+6rem)] md:translate-y-[calc(100%+2rem)]' : ''}`}
                         aria-label="Open AI Assistant"
                     >
-                        <Sparkles className="h-6 w-6" />
+                        <ArivAILogo className="h-6 w-6" />
 
                         {/* Pulse ring */}
                         <span className="absolute inset-0 -z-10 animate-ping rounded-full bg-primary/20" />
@@ -228,10 +232,10 @@ export function AIChatWidget({ campusContext, mode: propMode }: AIChatWidgetProp
                         <div className="flex items-center justify-between border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent px-4 py-3">
                             <div className="flex items-center gap-3">
                                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
-                                    <Bot className="h-5 w-5 text-primary" />
+                                    <ArivAILogo className="h-5 w-5" />
                                 </div>
                                 <div>
-                                    <h3 className="text-sm font-semibold">Arivolam AI</h3>
+                                    <h3 className="text-sm font-semibold">Ariv AI</h3>
                                     <p className="text-[10px] text-muted-foreground">
                                         {modeLabels[mode]}
                                     </p>
@@ -269,10 +273,10 @@ export function AIChatWidget({ campusContext, mode: propMode }: AIChatWidgetProp
                                     className="flex flex-col items-center py-6 text-center"
                                 >
                                     <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 mb-4">
-                                        <Sparkles className="h-8 w-8 text-primary" />
+                                        <ArivAILogo className="h-8 w-8" />
                                     </div>
                                     <h4 className="text-base font-semibold">
-                                        Hi! I&apos;m Arivolam AI ✨
+                                        Hi! I&apos;m Ariv AI ✨
                                     </h4>
                                     <p className="mt-1 text-xs text-muted-foreground max-w-[260px]">
                                         {mode === "campus"
@@ -320,7 +324,7 @@ export function AIChatWidget({ campusContext, mode: propMode }: AIChatWidgetProp
                                         {msg.role === "user" ? (
                                             <User className="h-3.5 w-3.5" />
                                         ) : (
-                                            <Bot className="h-3.5 w-3.5" />
+                                            <ArivAILogo className="h-3.5 w-3.5" />
                                         )}
                                     </div>
                                     <div
@@ -342,7 +346,7 @@ export function AIChatWidget({ campusContext, mode: propMode }: AIChatWidgetProp
                                     className="flex items-center gap-2"
                                 >
                                     <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                        <Bot className="h-3.5 w-3.5" />
+                                        <ArivAILogo className="h-3.5 w-3.5" />
                                     </div>
                                     <div className="rounded-2xl rounded-bl-md bg-muted/80 px-4 py-3">
                                         <div className="flex items-center gap-1.5">

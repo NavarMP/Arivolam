@@ -28,7 +28,29 @@ export default async function CampusStudentPage({
 
     let studentData: any = null;
 
-    if (user) {
+    // Method 1: Check ERP session first (takes priority for campus dashboard)
+    if (erpSession && erpSession.institution_id === institution.id) {
+        // Fetch from enrollments based on ERP session
+        // We must use the service role client here because RLS blocks reads for unauthenticated Supabase Auth users
+        const { createClient: createServiceClient } = await import("@supabase/supabase-js");
+        const serviceClient = createServiceClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+            process.env.SUPABASE_SERVICE_ROLE_KEY || ""
+        );
+
+        const { data: enrollment } = await serviceClient
+            .from("enrollments")
+            .select("*")
+            .eq("id", erpSession.enrollment_id)
+            .single();
+
+        if (enrollment && enrollment.role === "student") {
+            studentData = enrollment;
+        }
+    }
+
+    // Method 2: Fallback to Supabase Auth user
+    if (!studentData && user) {
         // Find them in institution_members
         const { data: member } = await supabase
             .from("institution_members")
@@ -44,20 +66,10 @@ export default async function CampusStudentPage({
                 email: user.email,
             };
         }
-    } else if (erpSession && erpSession.institution_id === institution.id) {
-        // Fetch from enrollments based on ERP session
-        const { data: enrollment } = await supabase
-            .from("enrollments")
-            .select("*")
-            .eq("id", erpSession.enrollment_id)
-            .single();
-
-        if (enrollment && enrollment.role === "student") {
-            studentData = enrollment;
-        }
     }
 
     if (!studentData) {
+        console.error("No student data found for user. Redirecting to campus root.");
         redirect(`/campus/${slug}`);
     }
 

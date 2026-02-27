@@ -4,6 +4,7 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { PendingWidget } from "./components/pending-widget";
 import { Button } from "@/components/ui/button";
+import { getAdminDashboardData } from "./users/actions";
 
 export default async function CampusAdminPage({
     params,
@@ -13,7 +14,7 @@ export default async function CampusAdminPage({
     const { slug } = await params;
     const supabase = await createClient();
 
-    // 1. Get Institution ID
+    // 1. Get Institution ID (just for name right now)
     const { data: institution } = await supabase
         .from("institutions")
         .select("id, name")
@@ -22,28 +23,15 @@ export default async function CampusAdminPage({
 
     if (!institution) return <div>Institution not found</div>;
 
-    // 2. Fetch Aggregated Data
-    // Get all students
-    const { count: studentCount } = await supabase
-        .from("institution_members")
-        .select("*", { count: "exact", head: true })
-        .eq("institution_id", institution.id)
-        .eq("role", "student");
+    // 2. Fetch Aggregated Data via Service Action (bypasses RLS strictly for verified admins)
+    let dashboardData;
+    try {
+        dashboardData = await getAdminDashboardData(slug);
+    } catch (e: any) {
+        return <div className="p-8 text-center text-destructive">{e.message}</div>;
+    }
 
-    // Get all staff
-    const { count: staffCount } = await supabase
-        .from("institution_members")
-        .select("*", { count: "exact", head: true })
-        .eq("institution_id", institution.id)
-        .eq("role", "staff");
-
-    // Get all pending enrollments
-    const { data: pendingEnrollments } = await supabase
-        .from("enrollments")
-        .select("id, email, register_number, admission_number, role, department, created_at")
-        .eq("institution_id", institution.id)
-        .eq("is_approved", false)
-        .order("created_at", { ascending: false });
+    const { studentCount, staffCount, pendingEnrollments } = dashboardData;
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">

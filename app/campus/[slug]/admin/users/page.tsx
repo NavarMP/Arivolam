@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { createClient } from "@/utils/supabase/client";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -11,7 +10,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle2, XCircle, Clock, Users, UserCheck } from "lucide-react";
-import { updateUserRole, approveEnrollment, rejectEnrollment } from "./actions";
+import { updateUserRole, approveEnrollment, rejectEnrollment, getCampusUsersData } from "./actions";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
 
@@ -38,7 +37,6 @@ export default function CampusUsersPage() {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<"members" | "pending">("pending");
     const [isPending, startTransition] = useTransition();
-    const supabase = createClient();
     const params = useParams();
     const slug = params.slug as string;
 
@@ -50,41 +48,22 @@ export default function CampusUsersPage() {
     const fetchData = async () => {
         setLoading(true);
 
-        const { data: institution } = await supabase
-            .from("institutions")
-            .select("id")
-            .eq("slug", slug)
-            .single();
+        try {
+            const data = await getCampusUsersData(slug);
 
-        if (!institution) {
+            setMembers(
+                data.members.map((m: any) => ({
+                    ...m,
+                    user_email: m.user_id,
+                }))
+            );
+
+            setPending(data.pending || []);
+        } catch (error: any) {
+            toast.error(error.message || "Failed to load users");
+        } finally {
             setLoading(false);
-            return;
         }
-
-        // Fetch members
-        const { data: membersData } = await supabase
-            .from("institution_members")
-            .select("user_id, role, created_at")
-            .eq("institution_id", institution.id)
-            .order("created_at", { ascending: false });
-
-        setMembers(
-            (membersData || []).map((m) => ({
-                ...m,
-                user_email: m.user_id,
-            }))
-        );
-
-        // Fetch pending enrollments
-        const { data: pendingData } = await supabase
-            .from("enrollments")
-            .select("id, email, register_number, admission_number, role, department, created_at")
-            .eq("institution_id", institution.id)
-            .eq("is_approved", false)
-            .order("created_at", { ascending: false });
-
-        setPending(pendingData || []);
-        setLoading(false);
     };
 
     const handleRoleChange = async (userId: string, newRole: string) => {
@@ -158,8 +137,8 @@ export default function CampusUsersPage() {
                 <button
                     onClick={() => setActiveTab("pending")}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === "pending"
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground hover:bg-muted/80"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:bg-muted/80"
                         }`}
                 >
                     <Clock className="h-4 w-4" />
@@ -173,8 +152,8 @@ export default function CampusUsersPage() {
                 <button
                     onClick={() => setActiveTab("members")}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === "members"
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground hover:bg-muted/80"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:bg-muted/80"
                         }`}
                 >
                     <Users className="h-4 w-4" />

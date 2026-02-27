@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdaptiveLogo } from "@/components/shared/adaptive-logo";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { SiteNav } from "@/components/layout/site-nav";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -137,15 +137,7 @@ export default function AboutPage() {
     return (
         <div ref={heroRef} className="min-h-screen bg-background">
             {/* Nav */}
-            <div className="fixed left-4 right-4 top-4 z-50 flex items-center justify-between md:left-8 md:right-8">
-                <Link href="/">
-                    <Button variant="ghost" className="gap-2 rounded-xl bg-background/60 backdrop-blur-xl">
-                        <ArrowLeft className="h-4 w-4" />
-                        Back
-                    </Button>
-                </Link>
-                <ThemeToggle />
-            </div>
+            <SiteNav />
 
             {/* Hero */}
             <section className="relative flex min-h-[70vh] flex-col items-center justify-center overflow-hidden px-4 py-20 text-center">

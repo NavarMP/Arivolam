@@ -1,18 +1,23 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
+import { getSession } from "@/lib/auth";
 
-export async function updateUserRole(
-    userId: string,
-    newRole: "student" | "teacher" | "parent" | "admin",
-    institutionSlug: string
-) {
+function getServiceClient() {
+    return createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+        process.env.SUPABASE_SERVICE_ROLE_KEY || ""
+    );
+}
+
+/**
+ * Verify the current user is an admin for the given institution.
+ * Supports both Supabase Auth and ERP JWT sessions.
+ */
+export async function verifyInstitutionAdmin(institutionSlug: string) {
     const supabase = await createClient();
-
-    // 1. Verify the current user is an admin
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: "Unauthorized" };
 
     // Get institution
     const { data: institution } = await supabase
@@ -23,28 +28,114 @@ export async function updateUserRole(
 
     if (!institution) return { error: "Institution not found" };
 
-    // Check current user is admin in this institution
-    const { data: membership } = await supabase
-        .from("institution_members")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("institution_id", institution.id)
-        .single();
+    // Method 1: Check Supabase Auth user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+        const { data: membership } = await supabase
+            .from("institution_members")
+            .select("role")
+            .eq("user_id", user.id)
+            .eq("institution_id", institution.id)
+            .single();
 
-    if (membership?.role !== "admin") {
-        return { error: "Forbidden: Only admins can change roles" };
+        if (membership?.role === "admin") {
+            return { institutionId: institution.id };
+        }
     }
 
-    // 2. Update the target user's role in this institution
-    const { error } = await supabase
+    // Method 2: Check ERP JWT session
+    const erpSession = await getSession();
+    if (erpSession && erpSession.institution_id === institution.id && erpSession.role === "admin") {
+        return { institutionId: institution.id };
+    }
+
+    return { error: "Forbidden: Only admins can perform this action" };
+}
+
+// ─── Data Fetching for Admin Pages (Bypassing RLS securely) ───
+
+export async function getAdminDashboardData(slug: string) {
+    const auth = await verifyInstitutionAdmin(slug);
+    if (auth.error) throw new Error(auth.error);
+
+    const serviceClient = getServiceClient();
+
+    const [
+        { count: studentCount },
+        { count: staffCount },
+        { data: pendingEnrollments }
+    ] = await Promise.all([
+        serviceClient
+            .from("institution_members")
+            .select("*", { count: "exact", head: true })
+            .eq("institution_id", auth.institutionId!)
+            .eq("role", "student"),
+        serviceClient
+            .from("institution_members")
+            .select("*", { count: "exact", head: true })
+            .eq("institution_id", auth.institutionId!)
+            .eq("role", "staff"),
+        serviceClient
+            .from("enrollments")
+            .select("id, full_name, email, register_number, admission_number, role, department, created_at")
+            .eq("institution_id", auth.institutionId!)
+            .eq("is_approved", false)
+            .order("created_at", { ascending: false })
+    ]);
+
+    return {
+        studentCount: studentCount || 0,
+        staffCount: staffCount || 0,
+        pendingEnrollments: pendingEnrollments || []
+    };
+}
+
+export async function getCampusUsersData(slug: string) {
+    const auth = await verifyInstitutionAdmin(slug);
+    if (auth.error) throw new Error(auth.error);
+
+    const serviceClient = getServiceClient();
+
+    const [
+        { data: membersData },
+        { data: pendingData }
+    ] = await Promise.all([
+        serviceClient
+            .from("institution_members")
+            .select("user_id, role, created_at")
+            .eq("institution_id", auth.institutionId!)
+            .order("created_at", { ascending: false }),
+        serviceClient
+            .from("enrollments")
+            .select("id, full_name, email, register_number, admission_number, role, department, created_at")
+            .eq("institution_id", auth.institutionId!)
+            .eq("is_approved", false)
+            .order("created_at", { ascending: false })
+    ]);
+
+    return {
+        members: membersData || [],
+        pending: pendingData || []
+    };
+}
+
+export async function updateUserRole(
+    userId: string,
+    newRole: "student" | "teacher" | "parent" | "admin",
+    institutionSlug: string
+) {
+    const auth = await verifyInstitutionAdmin(institutionSlug);
+    if (auth.error) return { error: auth.error };
+
+    const serviceClient = getServiceClient();
+
+    const { error } = await serviceClient
         .from("institution_members")
         .update({ role: newRole })
         .eq("user_id", userId)
-        .eq("institution_id", institution.id);
+        .eq("institution_id", auth.institutionId!);
 
-    if (error) {
-        return { error: error.message };
-    }
+    if (error) return { error: error.message };
 
     revalidatePath(`/campus/${institutionSlug}/admin/users`);
     return { success: true };
@@ -52,78 +143,41 @@ export async function updateUserRole(
 
 // ─── Approve Enrollment ───
 export async function approveEnrollment(enrollmentId: string, institutionSlug: string) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: "Unauthorized" };
+    const auth = await verifyInstitutionAdmin(institutionSlug);
+    if (auth.error) return { error: auth.error };
 
-    const { data: institution } = await supabase
-        .from("institutions")
-        .select("id")
-        .eq("slug", institutionSlug)
-        .single();
+    // Use service client to bypass RLS since ERP-only admins don't have Supabase Auth
+    const serviceClient = getServiceClient();
 
-    if (!institution) return { error: "Institution not found" };
-
-    // Verify admin
-    const { data: membership } = await supabase
-        .from("institution_members")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("institution_id", institution.id)
-        .single();
-
-    if (membership?.role !== "admin") {
-        return { error: "Forbidden: Only admins can approve enrollments" };
-    }
-
-    // Update enrollment
-    const { error } = await supabase
+    const { error } = await serviceClient
         .from("enrollments")
         .update({ is_approved: true })
         .eq("id", enrollmentId)
-        .eq("institution_id", institution.id);
+        .eq("institution_id", auth.institutionId!);
 
     if (error) return { error: error.message };
 
+    revalidatePath(`/campus/${institutionSlug}/admin`);
     revalidatePath(`/campus/${institutionSlug}/admin/users`);
     return { success: true };
 }
 
 // ─── Reject Enrollment ───
 export async function rejectEnrollment(enrollmentId: string, institutionSlug: string) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: "Unauthorized" };
+    const auth = await verifyInstitutionAdmin(institutionSlug);
+    if (auth.error) return { error: auth.error };
 
-    const { data: institution } = await supabase
-        .from("institutions")
-        .select("id")
-        .eq("slug", institutionSlug)
-        .single();
+    const serviceClient = getServiceClient();
 
-    if (!institution) return { error: "Institution not found" };
-
-    // Verify admin
-    const { data: membership } = await supabase
-        .from("institution_members")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("institution_id", institution.id)
-        .single();
-
-    if (membership?.role !== "admin") {
-        return { error: "Forbidden: Only admins can reject enrollments" };
-    }
-
-    // Delete enrollment
-    const { error } = await supabase
+    const { error } = await serviceClient
         .from("enrollments")
         .delete()
         .eq("id", enrollmentId)
-        .eq("institution_id", institution.id);
+        .eq("institution_id", auth.institutionId!);
 
     if (error) return { error: error.message };
 
+    revalidatePath(`/campus/${institutionSlug}/admin`);
     revalidatePath(`/campus/${institutionSlug}/admin/users`);
     return { success: true };
 }

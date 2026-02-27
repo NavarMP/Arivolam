@@ -13,6 +13,21 @@ function getServiceClient() {
     )
 }
 
+// ─── Get Unified Auth Status (For Client Components) ───
+import { getSession } from '@/lib/auth'
+
+export async function getAuthStatus() {
+    try {
+        const erpSession = await getSession();
+        return {
+            isAuthenticated: !!erpSession,
+            session: erpSession || null
+        };
+    } catch (error) {
+        return { isAuthenticated: false, session: null };
+    }
+}
+
 // ─── Register a New Institution ───
 export async function registerInstitution(formData: FormData) {
     const supabase = getServiceClient()
@@ -292,6 +307,7 @@ export async function campusSignup(formData: FormData) {
             .from('enrollments')
             .insert({
                 institution_id: institutionId,
+                full_name: fullName,
                 email,
                 phone,
                 register_number: registerNumber,

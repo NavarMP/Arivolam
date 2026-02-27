@@ -79,9 +79,15 @@ export async function loginWithOAuth(provider: 'google' | 'github' | 'facebook' 
 }
 
 // ─── Sign Out ───
+import { deleteSession } from '@/lib/auth'
+
 export async function signOut() {
     const supabase = await createClient()
     await supabase.auth.signOut()
+
+    // Also clear the ERP JWT session
+    await deleteSession()
+
     revalidatePath('/', 'layout')
     redirect('/')
 }

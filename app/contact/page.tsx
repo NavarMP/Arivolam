@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { AdaptiveLogo } from "@/components/shared/adaptive-logo";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { SiteNav } from "@/components/layout/site-nav";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ContactPage() {
@@ -39,15 +39,7 @@ export default function ContactPage() {
     return (
         <div className="min-h-screen bg-background">
             {/* Nav */}
-            <div className="fixed left-4 right-4 top-4 z-50 flex items-center justify-between md:left-8 md:right-8">
-                <Link href="/">
-                    <Button variant="ghost" className="gap-2 rounded-xl bg-background/60 backdrop-blur-xl">
-                        <ArrowLeft className="h-4 w-4" />
-                        Back
-                    </Button>
-                </Link>
-                <ThemeToggle />
-            </div>
+            <SiteNav />
 
             <div className="container mx-auto max-w-4xl px-4 pb-16 pt-24">
                 {/* Header */}

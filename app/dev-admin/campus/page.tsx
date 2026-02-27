@@ -1,19 +1,49 @@
 import { createClient } from "@/utils/supabase/server";
 import { InstitutionsTable } from "@/components/dev-admin/institutions-table";
+import Link from "next/link";
 
 async function getInstitutions() {
     const supabase = await createClient();
 
     const { data: institutions } = await supabase
         .from("institutions")
-        .select(`
-            *,
-            enrollments:enrollments(count),
-            members:institution_members(count)
-        `)
+        .select("*")
         .order("created_at", { ascending: false });
 
-    return institutions || [];
+    // Get member counts and enrollment counts per institution
+    const enriched = await Promise.all(
+        (institutions || []).map(async (inst) => {
+            const [
+                { count: memberCount },
+                { count: enrollmentCount },
+                { count: pendingCount },
+            ] = await Promise.all([
+                supabase
+                    .from("institution_members")
+                    .select("*", { count: "exact", head: true })
+                    .eq("institution_id", inst.id)
+                    .eq("is_active", true),
+                supabase
+                    .from("enrollments")
+                    .select("*", { count: "exact", head: true })
+                    .eq("institution_id", inst.id),
+                supabase
+                    .from("enrollments")
+                    .select("*", { count: "exact", head: true })
+                    .eq("institution_id", inst.id)
+                    .eq("is_approved", false),
+            ]);
+
+            return {
+                ...inst,
+                memberCount: memberCount || 0,
+                enrollmentCount: enrollmentCount || 0,
+                pendingCount: pendingCount || 0,
+            };
+        })
+    );
+
+    return enriched;
 }
 
 async function getCampusStats() {

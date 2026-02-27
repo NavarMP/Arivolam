@@ -11,6 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 type PendingEnrollment = {
     id: string;
+    full_name: string | null;
     email: string | null;
     register_number: string | null;
     admission_number: string | null;
@@ -103,7 +104,7 @@ export function PendingWidget({
                                 >
                                     <div className="space-y-1">
                                         <div className="flex items-center gap-2">
-                                            <span className="font-medium">{p.email || p.register_number || p.admission_number}</span>
+                                            <span className="font-medium">{p.full_name || p.email || p.register_number || p.admission_number}</span>
                                             <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${getRoleBadgeClasses(p.role)}`}>
                                                 {p.role}
                                             </span>

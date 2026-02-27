@@ -20,7 +20,7 @@ import {
     Sparkles,
 } from "lucide-react";
 import { AdaptiveLogo } from "@/components/shared/adaptive-logo";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { SiteNav } from "@/components/layout/site-nav";
 
 const features = [
     {
@@ -105,14 +105,8 @@ export default function CampusLandingPage() {
 
             <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
                 {/* Navigation / Header */}
-                <div className="absolute top-6 left-6 right-6 md:left-8 md:right-8 z-20 flex justify-between items-center">
-                    {/* <Link href="/">
-                        <Button variant="ghost" className="gap-2 bg-background/50 backdrop-blur-sm">
-                            <AdaptiveLogo size={20} />
-                            <span className="hidden sm:inline">Arivolam Social</span>
-                        </Button>
-                    </Link> */}
-                    <ThemeToggle />
+                <div className="fixed top-0 left-0 right-0 z-20">
+                    <SiteNav />
                 </div>
 
                 {/* Hero Section */}
