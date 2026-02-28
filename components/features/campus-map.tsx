@@ -15,9 +15,11 @@ import {
     Library, FlaskConical, BedDouble, Trophy, Utensils, ChevronUp,
     Locate, Compass, Star, Flag, ZoomIn, ZoomOut, Maximize2,
     ArrowRight, ArrowUpRight, ArrowDownRight, CornerDownRight, Footprints,
+    Minimize
 } from "lucide-react";
 import { FloorPlanViewer, type FloorPlan } from "../campus/floor-plan";
 import { getFloorPlans } from "@/app/campus/[slug]/admin/map-editor/floor-plan-actions";
+import { toast } from "sonner";
 
 // ─── Direction step type ───
 interface DirectionStep {
@@ -208,6 +210,42 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
     const [panStart, setPanStart] = useState<{ x: number; y: number } | null>(null);
     const [animPhase, setAnimPhase] = useState(0);
 
+    const [spaceHeld, setSpaceHeld] = useState(false);
+    useEffect(() => {
+        const handlerDown = (e: KeyboardEvent) => {
+            if (e.code === "Space" && !e.repeat && document.activeElement?.tagName !== "INPUT") {
+                e.preventDefault();
+                setSpaceHeld(true);
+            }
+        };
+        const handlerUp = (e: KeyboardEvent) => {
+            if (e.code === "Space") setSpaceHeld(false);
+        };
+        window.addEventListener("keydown", handlerDown);
+        window.addEventListener("keyup", handlerUp);
+        return () => { window.removeEventListener("keydown", handlerDown); window.removeEventListener("keyup", handlerUp); };
+    }, []);
+
+    // Fullscreen state
+    const mapWrapperRef = useRef<HTMLDivElement>(null);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    const handleToggleFullscreen = useCallback(() => {
+        if (!document.fullscreenElement) {
+            mapWrapperRef.current?.requestFullscreen().catch(err => {
+                console.error(`Error attempting to enable fullscreen: ${err.message}`);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    }, []);
+
+    useEffect(() => {
+        const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
+
     // Element positions (auto-layout from initial data)
     const elPositions = useMemo(() => {
         const pos: Record<string, { x: number; y: number; w: number; h: number }> = {};
@@ -313,8 +351,17 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
 
     // ─── Navigate to building ───
     const navigateToBuilding = useCallback((building: Building) => {
-        const buildingNode = navNodes.find((n) => n.building_id === building.id && n.node_type === "entrance");
-        if (!buildingNode) { setSelectedBuilding(building); return; }
+        let buildingNode = navNodes.find((n) => n.building_id === building.id && n.node_type === "entrance");
+
+        if (!buildingNode && navNodes.length > 0) {
+            let minDist = Infinity;
+            for (const node of navNodes) {
+                const dist = Math.hypot(node.latitude - building.latitude, node.longitude - building.longitude);
+                if (dist < minDist) { minDist = dist; buildingNode = node; }
+            }
+        }
+
+        if (!buildingNode) { toast.error("No navigation pathways available nearby."); setSelectedBuilding(building); return; }
         let startNode = navNodes.find((n) => n.label === "Main Gate");
         if (userPosition) {
             let minDist = Infinity;
@@ -323,7 +370,13 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
                 if (dist < minDist) { minDist = dist; startNode = node; }
             }
         }
-        if (!startNode) return;
+
+        if (!startNode && navNodes.length > 0) {
+            startNode = navNodes[0]; // Fallback if no Main Gate and no GPS
+        }
+
+        if (!startNode) { toast.error("No start location available."); return; }
+
         const path = aStarPath(navNodes, navEdges, startNode.id, buildingNode.id);
         if (path) {
             setRoutePath(path);
@@ -352,6 +405,7 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
         return null;
     }, [filteredBuildings, elPositions]);
 
+    const cursor = spaceHeld || isPanning ? "grabbing" : "grab";
     // ─── Canvas Rendering ───
     const render = useCallback(() => {
         const canvas = canvasRef.current; if (!canvas) return;
@@ -388,23 +442,52 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
             const col = b.color || CAT_COLORS[b.category] || "#3b82f6";
             const isSel = selectedBuilding?.id === b.id;
 
-            // Shadow
+            // Shape Rendering Selection
+            const hasCircle = b.geo_polygon?.includes('"shape":"circle"');
+            const hasPolygon = b.show_polygon && b.geo_polygon && b.geo_polygon.startsWith("[");
+
+            // Shadow & Fill
             ctx.shadowColor = "rgba(0,0,0,0.3)"; ctx.shadowBlur = 8 / zoom; ctx.shadowOffsetY = 2 / zoom;
             ctx.fillStyle = col + "25";
             ctx.beginPath();
-            ctx.roundRect(pos.x, pos.y, pos.w, pos.h, 6 / zoom);
+            let polyOk = false;
+
+            if (hasCircle) {
+                ctx.arc(pos.x + pos.w / 2, pos.y + pos.h / 2, pos.w / 2, 0, Math.PI * 2);
+                polyOk = true;
+            } else if (hasPolygon) {
+                try {
+                    const pts = JSON.parse(b.geo_polygon);
+                    if (Array.isArray(pts) && pts.length > 0) {
+                        ctx.moveTo(pos.x + (pts[0].x - (b as any).cx!), pos.y + (pts[0].y - (b as any).cy!));
+                        for (let i = 1; i < pts.length; i++) ctx.lineTo(pos.x + (pts[i].x - (b as any).cx!), pos.y + (pts[i].y - (b as any).cy!));
+                        ctx.closePath();
+                        polyOk = true;
+                    }
+                } catch (e) { }
+            }
+
+            if (!polyOk) {
+                ctx.roundRect(pos.x, pos.y, pos.w, pos.h, 6 / zoom);
+            }
             ctx.fill();
             ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
 
             // Border
             ctx.strokeStyle = isSel ? tc.selBorder : col;
             ctx.lineWidth = isSel ? 3 / zoom : 2 / zoom;
-            ctx.beginPath(); ctx.roundRect(pos.x, pos.y, pos.w, pos.h, 6 / zoom); ctx.stroke();
+            ctx.stroke();
 
             // Glow for selected
             if (isSel) {
                 ctx.strokeStyle = col + "60"; ctx.lineWidth = 6 / zoom;
-                ctx.beginPath(); ctx.roundRect(pos.x - 2, pos.y - 2, pos.w + 4, pos.h + 4, 8 / zoom); ctx.stroke();
+                ctx.beginPath();
+                if (hasCircle) {
+                    ctx.arc(pos.x + pos.w / 2, pos.y + pos.h / 2, (pos.w / 2) + (2 / zoom), 0, Math.PI * 2);
+                } else {
+                    ctx.roundRect(pos.x - 2, pos.y - 2, pos.w + 4, pos.h + 4, 8 / zoom);
+                }
+                ctx.stroke();
             }
 
             // Icon dot
@@ -473,6 +556,21 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
                 ctx.fillText(p.name, pos.x, pos.y + 16);
             }
         }
+
+        // Base pathways overlay
+        ctx.strokeStyle = tc.textSecondary + "40"; // Semi-transparent
+        ctx.lineWidth = 1.5 / zoom;
+        ctx.setLineDash([4 / zoom, 4 / zoom]);
+        for (const edge of navEdges) {
+            const fromPos = elPositions[edge.from_node_id];
+            const toPos = elPositions[edge.to_node_id];
+            if (!fromPos || !toPos) continue;
+            ctx.beginPath();
+            ctx.moveTo(fromPos.x, fromPos.y);
+            ctx.lineTo(toPos.x, toPos.y);
+            ctx.stroke();
+        }
+        ctx.setLineDash([]);
 
         // Route path (animated with waypoints and arrows)
         if (routePath && routePath.length >= 2) {
@@ -586,15 +684,17 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
         const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
         const world = screenToWorld(sx, sy);
 
-        const hit = hitTestBuilding(world.x, world.y);
-        if (hit) {
-            setSelectedBuilding(hit);
-            clearRoute();
-            return;
+        if (!spaceHeld) {
+            const hit = hitTestBuilding(world.x, world.y);
+            if (hit) {
+                setSelectedBuilding(hit);
+                clearRoute();
+                return;
+            }
         }
         setIsPanning(true);
         setPanStart({ x: sx, y: sy });
-    }, [screenToWorld, hitTestBuilding]);
+    }, [screenToWorld, hitTestBuilding, spaceHeld]);
 
     const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
         if (!isPanning || !panStart) return;
@@ -613,10 +713,8 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
     const zoomOut = useCallback(() => setZoom((z) => Math.max(MIN_ZOOM, z / 1.3)), []);
     const fitAll = useCallback(() => { setZoom(1); setPanOffset({ x: 200, y: 100 }); }, []);
 
-    const cursor = isPanning ? "grabbing" : "grab";
-
     return (
-        <div className="relative h-[calc(100vh-8rem)] w-full overflow-hidden rounded-xl border shadow-lg" style={{ backgroundColor: tc.canvasBg }}>
+        <div ref={mapWrapperRef} className={`relative w-full overflow-hidden border shadow-lg ${isFullscreen ? 'h-screen rounded-none' : 'h-[calc(100vh-8rem)] rounded-xl'}`} style={{ backgroundColor: tc.canvasBg, zIndex: isFullscreen ? 50 : 1 }}>
             {/* Canvas */}
             <div ref={containerRef} className="absolute inset-0">
                 <canvas
@@ -724,6 +822,9 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
                     <Badge variant="outline" className="text-[10px] justify-center py-0.5 px-1 font-mono">{Math.round(zoom * 100)}%</Badge>
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={zoomOut} title="Zoom Out"><ZoomOut className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={fitAll} title="Fit All"><Maximize2 className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleToggleFullscreen} title="Fullscreen">
+                        {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                    </Button>
                 </div>
                 <Button variant="secondary" size="icon" className={`h-10 w-10 rounded-xl shadow-lg ${isTracking ? "ring-2 ring-blue-500/50" : ""}`} disabled={!userPosition} title="My Location">
                     <Locate className={`h-4 w-4 ${isTracking ? "text-blue-500" : ""}`} />

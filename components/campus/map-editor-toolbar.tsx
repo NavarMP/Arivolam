@@ -7,7 +7,7 @@ import {
     MousePointer2, Square, Pentagon, Minus, MapPin, Type,
     Trash2, Undo2, Redo2, Magnet, Save, Eye, GitBranch,
     Route, ZoomIn, ZoomOut, Maximize2, Grid3X3, ChevronUp,
-    HelpCircle, Hand,
+    HelpCircle, Hand, Maximize, Minimize, Circle
 } from "lucide-react";
 import { useState } from "react";
 
@@ -16,6 +16,7 @@ export type DrawMode =
     | "hand"
     | "rect"
     | "polygon"
+    | "circle"
     | "line"
     | "marker"
     | "label"
@@ -43,12 +44,15 @@ interface MapEditorToolbarProps {
     onFitAll: () => void;
     onHelp?: () => void;
     isAutoSaving?: boolean;
+    isFullscreen?: boolean;
+    onToggleFullscreen?: () => void;
 }
 
-const DRAW_TOOLS: { mode: DrawMode; icon: typeof Square; label: string; shortcut?: string }[] = [
+const DRAW_TOOLS: { mode: DrawMode; icon: any; label: string; shortcut?: string }[] = [
     { mode: "select", icon: MousePointer2, label: "Select", shortcut: "V" },
     { mode: "hand", icon: Hand, label: "Hand (Pan)", shortcut: "H / Space" },
     { mode: "rect", icon: Square, label: "Rectangle", shortcut: "R" },
+    { mode: "circle", icon: Circle, label: "Circle", shortcut: "C" },
     { mode: "polygon", icon: Pentagon, label: "Polygon", shortcut: "P" },
     { mode: "line", icon: Minus, label: "Line", shortcut: "L" },
     { mode: "marker", icon: MapPin, label: "POI", shortcut: "M" },
@@ -88,7 +92,8 @@ export function MapEditorToolbar({
     activeMode, onModeChange, snapEnabled, onSnapToggle,
     onUndo, onRedo, canUndo, canRedo, onSave, saving,
     showNavGraph, onToggleNavGraph, hasChanges,
-    zoom, onZoomIn, onZoomOut, onFitAll, onHelp, isAutoSaving
+    zoom, onZoomIn, onZoomOut, onFitAll, onHelp, isAutoSaving,
+    isFullscreen, onToggleFullscreen
 }: MapEditorToolbarProps) {
     const [mobileExpanded, setMobileExpanded] = useState(false);
 
@@ -126,6 +131,13 @@ export function MapEditorToolbar({
                     <Badge variant="outline" className="text-[10px] justify-center py-0.5 px-1 font-mono">{Math.round(zoom * 100)}%</Badge>
                     <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9" onClick={onZoomOut}><ZoomOut className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent side="right" sideOffset={8}>Zoom Out</TooltipContent></Tooltip>
                     <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9" onClick={onFitAll}><Maximize2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent side="right" sideOffset={8}>Fit All</TooltipContent></Tooltip>
+                    {onToggleFullscreen && (
+                        <Tooltip><TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onToggleFullscreen}>
+                                {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                            </Button>
+                        </TooltipTrigger><TooltipContent side="right" sideOffset={8}>{isFullscreen ? "Exit Fullscreen" : "Fullscreen"}</TooltipContent></Tooltip>
+                    )}
                     <div className="h-px bg-border my-0.5" />
                     <Tooltip><TooltipTrigger asChild><Button variant={snapEnabled ? "secondary" : "ghost"} size="icon" className="h-9 w-9" onClick={onSnapToggle}><Grid3X3 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent side="right" sideOffset={8}>Snap {snapEnabled ? "On" : "Off"}</TooltipContent></Tooltip>
                     <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9" onClick={onUndo} disabled={!canUndo}><Undo2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent side="right" sideOffset={8}>Undo</TooltipContent></Tooltip>

@@ -7,7 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useDebounce } from "react-use";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { MapPin as MapPinIcon, X, Trash2 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+    AlignLeft, Compass, Copy, Eye, Expand, FileText, GitBranch, Hand, HelpCircle, Magnet, MapPin, Maximize2, Minus, MousePointer2, Pentagon, Plus, Redo2, RotateCcw, Route, Save, Search, Settings2, Shrink, Square, Trash2, Type, Undo2, X, ZoomIn, ZoomOut, MapPin as MapPinIcon, Building2
+} from "lucide-react";
 
 import { MapEditorToolbar, type DrawMode } from "./map-editor-toolbar";
 import { FloorPlanEditor, type FloorPlan } from "./floor-plan";
@@ -218,14 +221,40 @@ export function MapEditor({
     const [drawStart, setDrawStart] = useState<{ x: number; y: number } | null>(null);
     const [drawCurrent, setDrawCurrent] = useState<{ x: number; y: number } | null>(null);
     const [polygonPoints, setPolygonPoints] = useState<{ x: number; y: number }[]>([]);
-    const [linePoints, setLinePoints] = useState<{ x: number; y: number }[]>([]);
+    const [linePoints, setLinePoints] = useState<{ id?: string; x: number; y: number }[]>([]);
 
     // Marquee select state
     const [marqueeStart, setMarqueeStart] = useState<{ x: number; y: number } | null>(null);
     const [marqueeCurrent, setMarqueeCurrent] = useState<{ x: number; y: number } | null>(null);
+    const [marqueeSelectionIds, setMarqueeSelectionIds] = useState<string[]>([]);
+
+    // Context Menu state
+    const [contextMenu, setContextMenu] = useState<{ x: number; y: number; item: { kind: string; id: string } | null } | null>(null);
 
     // Keyboard modifiers
     const [spaceHeld, setSpaceHeld] = useState(false);
+
+    // Fullscreen state
+    const mapWrapperRef = useRef<HTMLDivElement>(null);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    const handleToggleFullscreen = useCallback(() => {
+        if (!document.fullscreenElement) {
+            mapWrapperRef.current?.requestFullscreen().catch((err) => {
+                toast.error(`Error attempting to enable fullscreen: ${err.message}`);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    }, []);
+
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
 
     // Drag state
     const [isPanning, setIsPanning] = useState(false);
@@ -287,7 +316,6 @@ export function MapEditor({
                     }
                 }
                 await Promise.allSettled(promises);
-                toast.success("Auto-saved map changes", { id: "autosave" });
                 initialElPositionsStr.current = currentStr;
                 setHasChanges(false);
             } catch (err) {
@@ -396,11 +424,17 @@ export function MapEditor({
         };
     }, [handleUndo, handleRedo]);
 
-    // Canvas elements derived from data + positions
     const buildingElements = useMemo(() =>
         buildings.map((b) => {
             const p = elPositions[b.id] || { x: 100, y: 100, w: 200, h: 120 };
-            return { id: b.id, x: p.x, y: p.y, w: p.w, h: p.h, color: b.color || CAT_COLORS[b.category] || "#3b82f6", name: b.name, shortName: b.short_name || b.name, category: b.category, floors: b.floors };
+            return {
+                id: b.id, x: p.x, y: p.y, w: p.w, h: p.h,
+                color: b.color || CAT_COLORS[b.category] || "#3b82f6",
+                name: b.name, shortName: b.short_name || b.name,
+                category: b.category, floors: b.floors,
+                geoPolygon: b.geo_polygon, show_polygon: b.show_polygon,
+                cx: (b as any).cx || p.x, cy: (b as any).cy || p.y
+            };
         }), [buildings, elPositions]);
 
     const poiElements = useMemo(() =>
@@ -506,12 +540,41 @@ export function MapEditor({
 
             // Fill
             ctx.fillStyle = b.color + "30";
-            ctx.fillRect(b.x, b.y, b.w, b.h);
-
-            // Border
             ctx.strokeStyle = isSelected ? tc.selBorder : b.color;
             ctx.lineWidth = isSelected ? 3 / zoom : 2 / zoom;
-            ctx.strokeRect(b.x, b.y, b.w, b.h);
+
+            if (b.geoPolygon?.includes('"shape":"circle"')) {
+                ctx.beginPath();
+                ctx.arc(b.x + b.w / 2, b.y + b.h / 2, b.w / 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            } else if (b.geoPolygon && b.geoPolygon.startsWith("[")) {
+                try {
+                    const pts = JSON.parse(b.geoPolygon);
+                    if (Array.isArray(pts) && pts.length > 0) {
+                        ctx.beginPath();
+                        ctx.moveTo(
+                            b.x + (pts[0].x - b.cx),
+                            b.y + (pts[0].y - b.cy)
+                        );
+                        for (let i = 1; i < pts.length; i++) {
+                            ctx.lineTo(
+                                b.x + (pts[i].x - b.cx),
+                                b.y + (pts[i].y - b.cy)
+                            );
+                        }
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+                } catch (e) {
+                    ctx.fillRect(b.x, b.y, b.w, b.h);
+                    ctx.strokeRect(b.x, b.y, b.w, b.h);
+                }
+            } else {
+                ctx.fillRect(b.x, b.y, b.w, b.h);
+                ctx.strokeRect(b.x, b.y, b.w, b.h);
+            }
 
             // Selection handles
             if (isSelected) {
@@ -645,7 +708,36 @@ export function MapEditor({
             ctx.fillText(`${Math.round(rw)} × ${Math.round(rh)}`, x + rw / 2, y - 8);
         }
 
-        // Marquee selection preview
+        // Marquee selection preview and multi-selection highlights
+        if (marqueeSelectionIds && marqueeSelectionIds.length > 0) {
+            ctx.fillStyle = "#3b82f615";
+            ctx.strokeStyle = "#3b82f6";
+            ctx.lineWidth = 2 / zoom;
+            ctx.setLineDash([4 / zoom, 4 / zoom]);
+            for (const id of marqueeSelectionIds) {
+                const pos = elPositions[id];
+                if (!pos) continue;
+                ctx.strokeRect(pos.x - 2, pos.y - 2, pos.w + 4, pos.h + 4);
+                ctx.fillRect(pos.x - 2, pos.y - 2, pos.w + 4, pos.h + 4);
+            }
+            ctx.setLineDash([]);
+        }
+
+        if (drawMode === "circle" && isDrawing && drawStart && drawCurrent) {
+            ctx.fillStyle = "#22c55e20";
+            ctx.strokeStyle = "#22c55e";
+            ctx.lineWidth = 2 / zoom;
+            ctx.beginPath();
+            const radius = Math.hypot(drawCurrent.x - drawStart.x, drawCurrent.y - drawStart.y);
+            ctx.arc(drawStart.x, drawStart.y, radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            const tx = drawStart.x;
+            const ty = drawStart.y - radius - 8;
+            ctx.fillStyle = tc.textPrimary;
+            ctx.fillText(`R: ${Math.round(radius)}`, tx, ty);
+        }
+
         if (marqueeStart && marqueeCurrent) {
             const x = Math.min(marqueeStart.x, marqueeCurrent.x);
             const y = Math.min(marqueeStart.y, marqueeCurrent.y);
@@ -813,41 +905,123 @@ export function MapEditor({
 
             const hit = hitTest(world.x, world.y);
             if (hit) {
-                // Select + start drag
+                // If the hit target is part of a previous marquee selection, drag ALL selected items
+                if (marqueeSelectionIds.includes(hit.id) && !e.altKey) {
+                    setIsDragging(true);
+                    setDragTarget({ kind: "multi", id: hit.id, offsetX: snapped.x, offsetY: snapped.y });
+                    return;
+                }
+
+                // Normal Select + start drag
                 const pos = elPositions[hit.id];
                 const ox = pos ? world.x - pos.x : 0;
                 const oy = pos ? world.y - pos.y : 0;
-                setIsDragging(true);
-                setDragTarget({ kind: hit.kind, id: hit.id, offsetX: ox, offsetY: oy });
 
-                if (hit.kind === "building") {
-                    const b = buildings.find((bb) => bb.id === hit.id);
-                    if (b) {
-                        setSelectedItem({
-                            type: "building",
-                            data: {
-                                id: b.id, name: b.name, short_name: b.short_name || "", description: b.description || "",
-                                category: b.category, floors: b.floors, latitude: b.latitude, longitude: b.longitude,
-                                geo_polygon: b.geo_polygon, icon: b.icon, color: b.color, operating_hours: b.operating_hours || "",
-                                sort_order: b.sort_order, label_visible_zoom: b.label_visible_zoom || 17, show_polygon: b.show_polygon ?? true,
-                            },
-                        });
+                let targetId = hit.id;
+                let isDuplicate = false;
+
+                if (e.altKey) {
+                    isDuplicate = true;
+                    targetId = crypto.randomUUID();
+                    toast.info("Duplicating item...");
+
+                    if (hit.kind === "building") {
+                        const b = buildings.find(x => x.id === hit.id);
+                        if (b) {
+                            const newB = { ...b, id: targetId, name: b.name + " (Copy)" };
+                            setBuildings(prev => [...prev, newB]);
+                            setElPositions(prev => ({ ...prev, [targetId]: { ...pos } }));
+                            setHasChanges(true);
+                            saveBuilding(slug, newB).then(saved => {
+                                setBuildings(prev => prev.map(x => x.id === targetId ? saved : x));
+                                setElPositions(prev => {
+                                    const next: Record<string, { x: number, y: number, w: number, h: number }> = { ...prev };
+                                    if (next[targetId]) {
+                                        next[saved.id] = next[targetId];
+                                        delete next[targetId];
+                                    }
+                                    return next;
+                                });
+                                setDragTarget(prev => prev?.id === targetId ? { ...prev, id: saved.id } : prev);
+                            });
+                        }
+                    } else if (hit.kind === "poi") {
+                        const p = pois.find(x => x.id === hit.id);
+                        if (p) {
+                            const newP = { ...p, id: targetId, name: p.name + " (Copy)" };
+                            setPOIs(prev => [...prev, newP]);
+                            setElPositions(prev => ({ ...prev, [targetId]: { ...pos } }));
+                            setHasChanges(true);
+                            savePOI(slug, { ...newP, id: undefined } as any).then(saved => {
+                                setPOIs(prev => prev.map(x => x.id === targetId ? saved : x));
+                                setElPositions(prev => {
+                                    const next: Record<string, { x: number, y: number, w: number, h: number }> = { ...prev };
+                                    if (next[targetId]) {
+                                        next[saved.id] = next[targetId];
+                                        delete next[targetId];
+                                    }
+                                    return next;
+                                });
+                                setDragTarget(prev => prev?.id === targetId ? { ...prev, id: saved.id } : prev);
+                            });
+                        }
+                    } else if (hit.kind === "navnode") {
+                        const n = navNodes.find(x => x.id === hit.id);
+                        if (n) {
+                            const newN = { ...n, id: targetId };
+                            setNavNodes(prev => [...prev, newN]);
+                            setElPositions(prev => ({ ...prev, [targetId]: { ...pos } }));
+                            setHasChanges(true);
+                            saveNavNode(slug, { ...newN, id: undefined } as any).then(saved => {
+                                setNavNodes(prev => prev.map(x => x.id === targetId ? saved : x));
+                                setElPositions(prev => {
+                                    const next: Record<string, { x: number, y: number, w: number, h: number }> = { ...prev };
+                                    if (next[targetId]) {
+                                        next[saved.id] = next[targetId];
+                                        delete next[targetId];
+                                    }
+                                    return next;
+                                });
+                                setDragTarget(prev => prev?.id === targetId ? { ...prev, id: saved.id } : prev);
+                            });
+                        }
                     }
-                } else if (hit.kind === "poi") {
-                    const p = pois.find((pp) => pp.id === hit.id);
-                    if (p) {
-                        setSelectedItem({
-                            type: "poi",
-                            data: { id: p.id, name: p.name, category: p.category, description: p.description || "", icon: p.icon, latitude: p.latitude, longitude: p.longitude, building_id: p.building_id || "" },
-                        });
-                    }
-                } else if (hit.kind === "navnode") {
-                    const n = navNodes.find((nn) => nn.id === hit.id);
-                    if (n) {
-                        setSelectedItem({
-                            type: "navnode",
-                            data: { id: n.id, latitude: n.latitude, longitude: n.longitude, node_type: n.node_type, label: n.label || "", building_id: n.building_id || "" },
-                        });
+                }
+
+                setIsDragging(true);
+                setDragTarget({ kind: hit.kind, id: targetId, offsetX: ox, offsetY: oy });
+
+                if (!isDuplicate) {
+                    // Update selection for property panel only if not duplicating (or handle selectedItem logic)
+                    if (hit.kind === "building") {
+                        const b = buildings.find((bb) => bb.id === hit.id);
+                        if (b) {
+                            setSelectedItem({
+                                type: "building",
+                                data: {
+                                    id: b.id, name: b.name, short_name: b.short_name || "", description: b.description || "",
+                                    category: b.category, floors: b.floors, latitude: b.latitude, longitude: b.longitude,
+                                    geo_polygon: b.geo_polygon, icon: b.icon, color: b.color, operating_hours: b.operating_hours || "",
+                                    sort_order: b.sort_order, label_visible_zoom: b.label_visible_zoom || 17, show_polygon: b.show_polygon ?? true,
+                                },
+                            });
+                        }
+                    } else if (hit.kind === "poi") {
+                        const p = pois.find((pp) => pp.id === hit.id);
+                        if (p) {
+                            setSelectedItem({
+                                type: "poi",
+                                data: { id: p.id, name: p.name, category: p.category, description: p.description || "", icon: p.icon, latitude: p.latitude, longitude: p.longitude, building_id: p.building_id || "" },
+                            });
+                        }
+                    } else if (hit.kind === "navnode") {
+                        const n = navNodes.find((nn) => nn.id === hit.id);
+                        if (n) {
+                            setSelectedItem({
+                                type: "navnode",
+                                data: { id: n.id, latitude: n.latitude, longitude: n.longitude, node_type: n.node_type, label: n.label || "", building_id: n.building_id || "" },
+                            });
+                        }
                     }
                 }
                 return;
@@ -857,14 +1031,52 @@ export function MapEditor({
             setMarqueeStart(world);
             setMarqueeCurrent(world);
             setSelectedItem(null);
-        } else if (drawMode === "rect") {
+            setMarqueeSelectionIds([]);
+        } else if (drawMode === "rect" || drawMode === "circle") {
             setIsDrawing(true);
             setDrawStart(snapped);
             setDrawCurrent(snapped);
         } else if (drawMode === "polygon") {
             setPolygonPoints((prev) => [...prev, snapped]);
         } else if (drawMode === "line") {
-            setLinePoints((prev) => [...prev, snapped]);
+            const tempId = crypto.randomUUID();
+            const nodeLat = mapCenter[0] + (snapped.y * 0.00001);
+            const nodeLon = mapCenter[1] + (snapped.x * 0.00001);
+
+            setLinePoints((prev) => [...prev, { id: tempId, x: snapped.x, y: snapped.y }]);
+            setDrawCurrent(snapped);
+            setHasChanges(true);
+
+            saveNavNode(slug, {
+                latitude: nodeLat,
+                longitude: nodeLon,
+                node_type: "waypoint"
+            }).then(saved => {
+                setElPositions(prev => ({ ...prev, [saved.id]: { x: snapped.x, y: snapped.y, w: 12, h: 12 } }));
+                setNavNodes(prev => [...prev, saved]);
+
+                setLinePoints(currentPoints => {
+                    const idx = currentPoints.findIndex(p => p.id === tempId || p.x === snapped.x);
+                    if (idx > 0) {
+                        const prevPoint = currentPoints[idx - 1];
+                        if (prevPoint.id && prevPoint.id !== tempId) {
+                            const weight = Math.round(haversineDistance(
+                                mapCenter[0] + (prevPoint.y * 0.00001), mapCenter[1] + (prevPoint.x * 0.00001),
+                                nodeLat, nodeLon
+                            )) || 5;
+                            saveNavEdge(slug, { from_node_id: prevPoint.id, to_node_id: saved.id, weight, edge_type: "walkway" })
+                                .then(e => setNavEdges(edges => [...edges, e]));
+                            saveNavEdge(slug, { from_node_id: saved.id, to_node_id: prevPoint.id, weight, edge_type: "walkway" })
+                                .then(e => setNavEdges(edges => [...edges, e]));
+                        }
+                    }
+                    return currentPoints.map((p, i) => i === idx ? { ...p, id: saved.id } : p);
+                });
+            }).catch(err => {
+                toast.error("Failed to generate live path node: " + err.message);
+                setLinePoints(prev => prev.filter(p => p.id !== tempId));
+            });
+
         } else if (drawMode === "marker") {
             // Place a new POI
             const newPOI: POIData = {
@@ -988,6 +1200,25 @@ export function MapEditor({
 
         // Dragging element
         if (isDragging && dragTarget) {
+            if (dragTarget.kind === "multi") {
+                const dx = snapped.x - dragTarget.offsetX;
+                const dy = snapped.y - dragTarget.offsetY;
+                if (dx !== 0 || dy !== 0) {
+                    setElPositions((prev) => {
+                        const next = { ...prev };
+                        for (const id of marqueeSelectionIds) {
+                            if (next[id]) {
+                                next[id] = { ...next[id], x: next[id].x + dx, y: next[id].y + dy };
+                            }
+                        }
+                        return next;
+                    });
+                    setDragTarget((prev) => prev ? { ...prev, offsetX: snapped.x, offsetY: snapped.y } : prev);
+                    setHasChanges(true);
+                }
+                return;
+            }
+
             const newX = snapToGrid(world.x - dragTarget.offsetX);
             const newY = snapToGrid(world.y - dragTarget.offsetY);
             setElPositions((prev) => ({ ...prev, [dragTarget.id]: { ...prev[dragTarget.id], x: newX, y: newY } }));
@@ -1039,7 +1270,7 @@ export function MapEditor({
             return;
         }
 
-        if (drawMode === "rect" && isDrawing) {
+        if ((drawMode === "rect" || drawMode === "circle") && isDrawing) {
             setDrawCurrent(snapped);
         }
 
@@ -1083,21 +1314,39 @@ export function MapEditor({
             const w = Math.abs(marqueeCurrent.x - marqueeStart.x);
             const h = Math.abs(marqueeCurrent.y - marqueeStart.y);
 
-            // Phase 1 Group select: find first building inside marquee and select it
-            const hitBuilding = buildingElements.find(b =>
-                b.x >= x && b.y >= y && (b.x + b.w) <= (x + w) && (b.y + b.h) <= (y + h)
-            );
+            const newSelectionIds: string[] = [];
+            for (const b of buildings) {
+                const pos = elPositions[b.id];
+                if (pos && pos.x >= x && pos.y >= y && (pos.x + pos.w) <= (x + w) && (pos.y + pos.h) <= (y + h)) {
+                    newSelectionIds.push(b.id);
+                }
+            }
+            for (const p of pois) {
+                const pos = elPositions[p.id];
+                if (pos && pos.x >= x && pos.y >= y && (pos.x + 24) <= (x + w) && (pos.y + 24) <= (y + h)) {
+                    newSelectionIds.push(p.id);
+                }
+            }
+            for (const n of navNodes) {
+                const pos = elPositions[n.id];
+                if (pos && pos.x >= x && pos.y >= y && pos.x <= (x + w) && pos.y <= (y + h)) {
+                    newSelectionIds.push(n.id);
+                }
+            }
 
-            if (hitBuilding) {
-                const b = buildings.find(bb => bb.id === hitBuilding.id);
-                if (b) {
+            setMarqueeSelectionIds(newSelectionIds);
+
+            // Phase 1 Group select: find first building inside marquee and select it just for panel info if needed
+            if (newSelectionIds.length > 0) {
+                const firstB = buildings.find(bb => newSelectionIds.includes(bb.id));
+                if (firstB) {
                     setSelectedItem({
                         type: "building",
                         data: {
-                            id: b.id, name: b.name, short_name: b.short_name || "", description: b.description || "",
-                            category: b.category, floors: b.floors, latitude: b.latitude, longitude: b.longitude,
-                            geo_polygon: b.geo_polygon, icon: b.icon, color: b.color, operating_hours: b.operating_hours || "",
-                            sort_order: b.sort_order, label_visible_zoom: b.label_visible_zoom || 17, show_polygon: b.show_polygon ?? true,
+                            id: firstB.id, name: firstB.name, short_name: firstB.short_name || "", description: firstB.description || "",
+                            category: firstB.category, floors: firstB.floors, latitude: firstB.latitude, longitude: firstB.longitude,
+                            geo_polygon: firstB.geo_polygon, icon: firstB.icon, color: firstB.color, operating_hours: firstB.operating_hours || "",
+                            sort_order: firstB.sort_order, label_visible_zoom: firstB.label_visible_zoom || 17, show_polygon: firstB.show_polygon ?? true,
                         },
                     });
                 }
@@ -1117,21 +1366,75 @@ export function MapEditor({
             const rh = Math.abs(drawCurrent.y - drawStart.y);
 
             if (rw > 20 && rh > 20) {
-                const newBuilding: BuildingData = {
-                    name: "", short_name: "", description: "", category: "academic", floors: 1,
+                const tempId = crypto.randomUUID();
+                const newBuilding: any = {
+                    id: tempId, name: "New Building", short_name: "", description: "", category: "academic", floors: 1,
                     latitude: mapCenter[0], longitude: mapCenter[1], icon: "building-2", color: "#3b82f6",
                     operating_hours: "", sort_order: buildings.length, label_visible_zoom: 17, show_polygon: true,
                     cx: x, cy: y, cw: rw, ch: rh,
                 };
-                setSelectedItem({ type: "building", data: newBuilding });
+
+                setBuildings(prev => [...prev, newBuilding]);
+                setElPositions(prev => ({ ...prev, [tempId]: { x, y, w: rw, h: rh } }));
                 setHasChanges(true);
+
+                saveBuilding(slug, { ...newBuilding, id: undefined } as any).then(saved => {
+                    setBuildings(prev => prev.map(b => b.id === tempId ? saved : b));
+                    setElPositions(prev => {
+                        const next: Record<string, any> = { ...prev };
+                        if (next[tempId]) { next[saved.id] = next[tempId]; delete next[tempId]; }
+                        return next;
+                    });
+                    setSelectedItem({ type: "building", data: { ...saved, cx: x, cy: y, cw: rw, ch: rh } as any });
+                }).catch(err => toast.error(err.message));
+
+                setSelectedItem({ type: "building", data: newBuilding });
+                toast.success("Building created!");
             }
 
             setIsDrawing(false);
             setDrawStart(null);
             setDrawCurrent(null);
         }
-    }, [isPanning, drawMode, isDrawing, drawStart, drawCurrent, mapCenter, buildings.length, isDragging, isResizing]);
+
+        // Finish Circle
+        if (drawMode === "circle" && isDrawing && drawStart && drawCurrent) {
+            pushUndo();
+            const radius = Math.hypot(drawCurrent.x - drawStart.x, drawCurrent.y - drawStart.y);
+
+            if (radius > 10) {
+                const tempId = crypto.randomUUID();
+                const newBuilding: any = {
+                    id: tempId, name: "New Circular Area", short_name: "", description: JSON.stringify({ shape: "circle" }), category: "academic", floors: 1,
+                    latitude: mapCenter[0], longitude: mapCenter[1], icon: "circle", color: "#22c55e",
+                    operating_hours: "", sort_order: buildings.length, label_visible_zoom: 17, show_polygon: true,
+                    cx: drawStart.x - radius, cy: drawStart.y - radius, cw: radius * 2, ch: radius * 2,
+                    geo_polygon: JSON.stringify({ shape: "circle" })
+                };
+
+                setBuildings(prev => [...prev, newBuilding]);
+                setElPositions(prev => ({ ...prev, [tempId]: { x: drawStart.x - radius, y: drawStart.y - radius, w: radius * 2, h: radius * 2 } }));
+                setHasChanges(true);
+                setSelectedItem({ type: "building", data: newBuilding });
+
+                saveBuilding(slug, { ...newBuilding, id: undefined } as any).then(saved => {
+                    setBuildings(prev => prev.map(b => b.id === tempId ? saved : b));
+                    setElPositions(prev => {
+                        const next: Record<string, any> = { ...prev };
+                        if (next[tempId]) { next[saved.id] = next[tempId]; delete next[tempId]; }
+                        return next;
+                    });
+                    setSelectedItem({ type: "building", data: { ...saved, cx: drawStart.x - radius, cy: drawStart.y - radius, cw: radius * 2, ch: radius * 2 } as any });
+                }).catch(err => toast.error(err.message));
+
+                toast.success("Circular area created!");
+            }
+
+            setIsDrawing(false);
+            setDrawStart(null);
+            setDrawCurrent(null);
+        }
+    }, [isPanning, drawMode, isDrawing, drawStart, drawCurrent, mapCenter, buildings.length, isDragging, isResizing, marqueeSelectionIds, buildings, elPositions, pois, navNodes]);
 
     // Double-click to finish polygon/line
     const handleDoubleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -1147,8 +1450,10 @@ export function MapEditor({
                 { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity }
             );
 
-            const newBuilding: BuildingData = {
-                name: "",
+            const tempId = crypto.randomUUID();
+            const newBuilding: any = {
+                id: tempId,
+                name: "New Polygon Area",
                 short_name: "",
                 description: "",
                 category: "academic",
@@ -1161,117 +1466,172 @@ export function MapEditor({
                 sort_order: buildings.length,
                 label_visible_zoom: 17,
                 show_polygon: true,
+                geo_polygon: JSON.stringify(polygonPoints),
                 cx: bounds.minX,
                 cy: bounds.minY,
                 cw: bounds.maxX - bounds.minX,
                 ch: bounds.maxY - bounds.minY,
             };
-            setSelectedItem({ type: "building", data: newBuilding });
+
+            setBuildings(prev => [...prev, newBuilding]);
+            setElPositions(prev => ({ ...prev, [tempId]: { x: bounds.minX, y: bounds.minY, w: bounds.maxX - bounds.minX, h: bounds.maxY - bounds.minY } }));
             setHasChanges(true);
+            setSelectedItem({ type: "building", data: newBuilding });
+
+            saveBuilding(slug, { ...newBuilding, id: undefined } as any).then(saved => {
+                setBuildings(prev => prev.map(b => b.id === tempId ? saved : b));
+                setElPositions(prev => {
+                    const next: Record<string, any> = { ...prev };
+                    if (next[tempId]) { next[saved.id] = next[tempId]; delete next[tempId]; }
+                    return next;
+                });
+                setSelectedItem({ type: "building", data: { ...saved, cx: bounds.minX, cy: bounds.minY, cw: bounds.maxX - bounds.minX, ch: bounds.maxY - bounds.minY } as any });
+            }).catch(err => toast.error(err.message));
+
+            toast.success("Polygon area created!");
+
             setPolygonPoints([]);
             setDrawCurrent(null);
+            setDrawMode("select");
+            pushUndo();
         }
 
-        if (drawMode === "line" && linePoints.length >= 2) {
-            toast.info("Generating navigation path...");
-
-            // Transform line points (already snapped world coords) to coordinate payload
-            const pathNodes = linePoints.map((pt, i) => ({
-                id: crypto.randomUUID(), // Temp ID
-                latitude: mapCenter[0] + (pt.y * 0.00001), // Very rough projection
-                longitude: mapCenter[1] + (pt.x * 0.00001),
-                node_type: "waypoint",
-                cx: pt.x,
-                cy: pt.y
-            }));
-
-            // Create nodes synchronously to get IDs
-            const createPath = async () => {
-                setSaving(true);
-                try {
-                    const savedNodes: MapNavNode[] = [];
-                    for (const node of pathNodes) {
-                        const saved = await saveNavNode(slug, {
-                            latitude: node.latitude,
-                            longitude: node.longitude,
-                            node_type: node.node_type
-                        });
-                        setElPositions(prev => ({ ...prev, [saved.id]: { x: node.cx, y: node.cy, w: 12, h: 12 } }));
-                        savedNodes.push(saved);
-                    }
-
-                    setNavNodes(prev => [...prev, ...savedNodes]);
-
-                    // Connect edges
-                    const newEdges: any[] = [];
-                    for (let i = 0; i < savedNodes.length - 1; i++) {
-                        const fromNode = savedNodes[i];
-                        const toNode = savedNodes[i + 1];
-                        const weight = Math.round(haversineDistance(
-                            fromNode.latitude, fromNode.longitude,
-                            toNode.latitude, toNode.longitude
-                        )) || 5;
-
-                        const edgeForwards = await saveNavEdge(slug, {
-                            from_node_id: fromNode.id,
-                            to_node_id: toNode.id,
-                            weight, edge_type: "walkway"
-                        });
-
-                        const edgeBackwards = await saveNavEdge(slug, {
-                            from_node_id: toNode.id,
-                            to_node_id: fromNode.id,
-                            weight, edge_type: "walkway"
-                        });
-
-                        newEdges.push(edgeForwards, edgeBackwards);
-                    }
-                    setNavEdges(prev => [...prev, ...newEdges]);
-
-                    toast.success(`Created path with ${savedNodes.length} nodes`);
-                    setHasChanges(true); // Positional data changed
-                    pushUndo();
-                } catch (err: any) {
-                    toast.error("Failed to save path: " + err.message);
-                } finally {
-                    setSaving(false);
-                    setLinePoints([]);
-                    setDrawCurrent(null);
-                    setDrawMode("select");
-                }
-            };
-
-            createPath();
+        if (drawMode === "line" && linePoints.length >= 1) {
+            toast.success("Path finished");
+            setLinePoints([]);
+            setDrawCurrent(null);
+            setDrawMode("select");
+            pushUndo();
         }
     }, [drawMode, polygonPoints, linePoints, mapCenter, buildings.length, slug, haversineDistance, pushUndo]);
 
     // ─── Delete handler (declared before keyboard shortcuts to avoid forward ref) ───
-    const handleDeleteItem = useCallback(async () => {
-        if (!selectedItem || !selectedItem.data.id) return;
+    const handleDeleteItem = useCallback(async (overrideItem?: any) => {
+        // Handle Marquee Multiple Selection Deletions
+        if (marqueeSelectionIds && marqueeSelectionIds.length > 0) {
+            pushUndo();
+            setSaving(true);
+            try {
+                const bIds = buildings.filter(b => marqueeSelectionIds.includes(b.id)).map(b => b.id);
+                const pIds = pois.filter(p => marqueeSelectionIds.includes(p.id)).map(p => p.id);
+                const nIds = navNodes.filter(n => marqueeSelectionIds.includes(n.id)).map(n => n.id);
+
+                // Fire off deletions concurrently for multi-select
+                const promises = [];
+                for (const id of bIds) promises.push(deleteBuildingAction(slug, id));
+                for (const id of pIds) promises.push(deletePOIAction(slug, id));
+                for (const id of nIds) promises.push(deleteNavNodeAction(slug, id));
+                await Promise.allSettled(promises);
+
+                setBuildings(prev => prev.filter(b => !marqueeSelectionIds.includes(b.id)));
+                setPOIs(prev => prev.filter(p => !marqueeSelectionIds.includes(p.id)));
+                setNavNodes(prev => prev.filter(n => !marqueeSelectionIds.includes(n.id)));
+                setNavEdges(prev => prev.filter(e => !marqueeSelectionIds.includes(e.from_node_id) && !marqueeSelectionIds.includes(e.to_node_id)));
+
+                setMarqueeSelectionIds([]);
+                setSelectedItem(null);
+                setContextMenu(null);
+                toast.success(`Deleted ${marqueeSelectionIds.length} items`);
+            } catch (err: any) {
+                toast.error("Multi-delete failed: " + err.message);
+            } finally {
+                setSaving(false);
+            }
+            return;
+        }
+
+        const itemToDel = overrideItem || selectedItem;
+        if (!itemToDel || !itemToDel.data.id) return;
         pushUndo();
         setSaving(true);
         try {
-            if (selectedItem.type === "building") {
-                await deleteBuildingAction(slug, selectedItem.data.id);
-                setBuildings((prev) => prev.filter((b) => b.id !== selectedItem.data.id));
+            if (itemToDel.type === "building") {
+                await deleteBuildingAction(slug, itemToDel.data.id);
+                setBuildings((prev) => prev.filter((b) => b.id !== itemToDel.data.id));
                 toast.success("Building deleted");
-            } else if (selectedItem.type === "poi") {
-                await deletePOIAction(slug, selectedItem.data.id);
-                setPOIs((prev) => prev.filter((p) => p.id !== selectedItem.data.id));
+            } else if (itemToDel.type === "poi") {
+                await deletePOIAction(slug, itemToDel.data.id);
+                setPOIs((prev) => prev.filter((p) => p.id !== itemToDel.data.id));
                 toast.success("POI deleted");
-            } else if (selectedItem.type === "navnode") {
-                await deleteNavNodeAction(slug, selectedItem.data.id);
-                setNavNodes((prev) => prev.filter((n) => n.id !== selectedItem.data.id));
-                setNavEdges((prev) => prev.filter((e) => e.from_node_id !== selectedItem.data.id && e.to_node_id !== selectedItem.data.id));
+            } else if (itemToDel.type === "navnode") {
+                await deleteNavNodeAction(slug, itemToDel.data.id);
+                setNavNodes((prev) => prev.filter((n) => n.id !== itemToDel.data.id));
+                setNavEdges((prev) => prev.filter((e) => e.from_node_id !== itemToDel.data.id && e.to_node_id !== itemToDel.data.id));
                 toast.success("Nav node deleted");
             }
-            setSelectedItem(null);
+            if (!overrideItem || selectedItem?.data.id === overrideItem.data.id) {
+                setSelectedItem(null);
+            }
+            setContextMenu(null);
         } catch (err: any) {
             toast.error("Delete failed: " + err.message);
         } finally {
             setSaving(false);
         }
-    }, [selectedItem, slug]);
+    }, [selectedItem, slug, pushUndo]);
+
+    const handleDuplicateItem = useCallback(async (kind: string, id: string) => {
+        const targetId = crypto.randomUUID();
+        const pos = elPositions[id];
+        if (!pos) return;
+
+        toast.info("Duplicating item...");
+        pushUndo();
+
+        if (kind === "building") {
+            const b = buildings.find(x => x.id === id);
+            if (b) {
+                const newB = { ...b, id: targetId, name: b.name + " (Copy)" };
+                setBuildings(prev => [...prev, newB]);
+                setElPositions(prev => ({ ...prev, [targetId]: { ...pos, x: pos.x + 20, y: pos.y + 20 } }));
+                setHasChanges(true);
+                saveBuilding(slug, { ...newB, id: undefined } as any).then(saved => {
+                    setBuildings(prev => prev.map(x => x.id === targetId ? saved : x));
+                    setElPositions(prev => {
+                        const next: Record<string, any> = { ...prev };
+                        if (next[targetId]) { next[saved.id] = next[targetId]; delete next[targetId]; }
+                        return next;
+                    });
+                });
+                setSelectedItem({ type: "building", data: { ...newB, ...pos, x: pos.x + 20, y: pos.y + 20 } as any });
+            }
+        } else if (kind === "poi") {
+            const p = pois.find(x => x.id === id);
+            if (p) {
+                const newP = { ...p, id: targetId, name: p.name + " (Copy)" };
+                setPOIs(prev => [...prev, newP]);
+                setElPositions(prev => ({ ...prev, [targetId]: { ...pos, x: pos.x + 20, y: pos.y + 20 } }));
+                setHasChanges(true);
+                savePOI(slug, { ...newP, id: undefined } as any).then(saved => {
+                    setPOIs(prev => prev.map(x => x.id === targetId ? saved : x));
+                    setElPositions(prev => {
+                        const next: Record<string, any> = { ...prev };
+                        if (next[targetId]) { next[saved.id] = next[targetId]; delete next[targetId]; }
+                        return next;
+                    });
+                });
+                setSelectedItem({ type: "poi", data: newP as any });
+            }
+        } else if (kind === "navnode") {
+            const n = navNodes.find(x => x.id === id);
+            if (n) {
+                const newN = { ...n, id: targetId };
+                setNavNodes(prev => [...prev, newN]);
+                setElPositions(prev => ({ ...prev, [targetId]: { ...pos, x: pos.x + 20, y: pos.y + 20 } }));
+                setHasChanges(true);
+                saveNavNode(slug, { ...newN, id: undefined } as any).then(saved => {
+                    setNavNodes(prev => prev.map(x => x.id === targetId ? saved : x));
+                    setElPositions(prev => {
+                        const next: Record<string, any> = { ...prev };
+                        if (next[targetId]) { next[saved.id] = next[targetId]; delete next[targetId]; }
+                        return next;
+                    });
+                });
+                setSelectedItem({ type: "navnode", data: newN as any });
+            }
+        }
+        setContextMenu(null);
+    }, [buildings, pois, navNodes, elPositions, slug, pushUndo]);
 
     // ─── Wheel zoom (native listener to bypass React passive) ───
     useEffect(() => {
@@ -1332,12 +1692,13 @@ export function MapEditor({
             if (e.key === "v" || e.key === "V") setDrawMode("select");
             if (e.key === "h" || e.key === "H") setDrawMode("hand");
             if (e.key === "r" || e.key === "R") setDrawMode("rect");
+            if (e.key === "c" || e.key === "C") setDrawMode("circle");
             if (e.key === "p" || e.key === "P") setDrawMode("polygon");
             if (e.key === "l" || e.key === "L") setDrawMode("line");
             if (e.key === "m" || e.key === "M") setDrawMode("marker");
             if (e.key === "t" || e.key === "T") setDrawMode("label");
             if (e.key === "Delete" || e.key === "Backspace") {
-                if (selectedItem?.data.id) {
+                if (selectedItem?.data.id || marqueeSelectionIds.length > 0) {
                     handleDeleteItem();
                 }
             }
@@ -1506,7 +1867,14 @@ export function MapEditor({
 
     return (
         <TooltipProvider delayDuration={200}>
-            <div className="relative h-[calc(100vh-8rem)] w-full overflow-hidden rounded-xl border shadow-lg" style={{ backgroundColor: tc.canvasBg }}>
+            {/* Canvas wrapper with Context Menu ClickAway */}
+            <div ref={mapWrapperRef} className={`relative w-full overflow-hidden border shadow-lg ${isFullscreen ? 'h-screen rounded-none' : 'h-[calc(100vh-8rem)] rounded-xl'}`} style={{ backgroundColor: tc.canvasBg, zIndex: isFullscreen ? 50 : 1 }}>
+
+                {/* Clickaway listener for contextMenu */}
+                {contextMenu && (
+                    <div className="absolute inset-0 z-[2000]" onClick={() => setContextMenu(null)} onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }} />
+                )}
+
                 {/* Status bar */}
                 <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1001] flex items-center gap-2">
                     <Badge
@@ -1558,7 +1926,15 @@ export function MapEditor({
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUp}
                         onDoubleClick={handleDoubleClick}
-                        onContextMenu={(e) => e.preventDefault()}
+                        onContextMenu={(e) => {
+                            e.preventDefault();
+                            const rect = canvasRef.current!.getBoundingClientRect();
+                            const sx = e.clientX - rect.left;
+                            const sy = e.clientY - rect.top;
+                            const world = screenToWorld(sx, sy);
+                            const hit = hitTest(world.x, world.y);
+                            setContextMenu({ x: sx, y: sy, item: hit ? { kind: hit.kind, id: hit.id } : null });
+                        }}
                         onTouchStart={(e) => {
                             if (e.touches.length === 2) {
                                 // Pinch start
@@ -1590,6 +1966,52 @@ export function MapEditor({
                     />
                 </div>
 
+                {/* Context Menu UI */}
+                <AnimatePresence>
+                    {contextMenu && (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ duration: 0.1 }}
+                            className="absolute z-[3000] bg-background border shadow-xl rounded-xl py-1 min-w-[170px] text-sm"
+                            style={{ left: Math.min(contextMenu.x, (containerRef.current?.clientWidth || 2000) - 170), top: Math.min(contextMenu.y, (containerRef.current?.clientHeight || 2000) - 170) }}
+                        >
+                            {contextMenu.item ? (
+                                <>
+                                    <div className="px-3 py-1.5 text-[11px] font-semibold tracking-wider text-muted-foreground border-b mb-1">
+                                        {contextMenu.item.kind.toUpperCase()} ACTIONS
+                                    </div>
+                                    <button className="w-full text-left px-3 py-2 hover:bg-muted transition-colors flex items-center gap-2" onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDuplicateItem(contextMenu.item!.kind, contextMenu.item!.id);
+                                    }}>
+                                        <Copy className="h-4 w-4" /> Duplicate
+                                    </button>
+                                    <button className="w-full text-left px-3 py-2 hover:bg-red-500/10 hover:text-red-600 text-destructive transition-colors flex items-center gap-2" onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteItem({ type: contextMenu.item!.kind, data: { id: contextMenu.item!.id } });
+                                    }}>
+                                        <Trash2 className="h-4 w-4" /> Delete
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="px-3 py-1.5 text-[11px] font-semibold tracking-wider text-muted-foreground border-b mb-1">
+                                        CANVAS ACTIONS
+                                    </div>
+                                    <button className="w-full text-left px-3 py-2 hover:bg-muted transition-colors flex items-center gap-2" onClick={() => {
+                                        setDrawMode("rect"); setContextMenu(null);
+                                    }}><Building2 className="h-4 w-4" /> Draw Building</button>
+                                    <button className="w-full text-left px-3 py-2 hover:bg-muted transition-colors flex items-center gap-2" onClick={() => {
+                                        setDrawMode("marker"); setContextMenu(null);
+                                    }}><MapPin className="h-4 w-4" /> Add Marker</button>
+                                </>
+                            )}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
                 {/* Toolbar */}
                 <MapEditorToolbar
                     activeMode={drawMode}
@@ -1617,6 +2039,8 @@ export function MapEditor({
                     onZoomOut={zoomOut}
                     onFitAll={fitAll}
                     onHelp={() => window.open(`/campus/${slug}/admin/map-guide`, '_blank')}
+                    isFullscreen={isFullscreen}
+                    onToggleFullscreen={handleToggleFullscreen}
                 />
 
                 {/* Property Panel */}
