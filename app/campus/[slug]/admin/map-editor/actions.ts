@@ -70,6 +70,10 @@ export async function saveBuilding(slug: string, building: {
     sort_order?: number;
     label_visible_zoom?: number;
     show_polygon?: boolean;
+    canvas_x?: number;
+    canvas_y?: number;
+    canvas_w?: number;
+    canvas_h?: number;
 }) {
     const { supabase, institutionId } = await verifyAdmin(slug);
 
@@ -89,6 +93,10 @@ export async function saveBuilding(slug: string, building: {
         sort_order: building.sort_order || 0,
         label_visible_zoom: building.label_visible_zoom || 17,
         show_polygon: building.show_polygon ?? true,
+        canvas_x: building.canvas_x ?? null,
+        canvas_y: building.canvas_y ?? null,
+        canvas_w: building.canvas_w ?? null,
+        canvas_h: building.canvas_h ?? null,
         is_active: true,
     };
 
@@ -132,6 +140,8 @@ export async function savePOI(slug: string, poi: {
     latitude: number;
     longitude: number;
     building_id?: string;
+    canvas_x?: number;
+    canvas_y?: number;
 }) {
     const { supabase, institutionId } = await verifyAdmin(slug);
 
@@ -144,6 +154,8 @@ export async function savePOI(slug: string, poi: {
         latitude: poi.latitude,
         longitude: poi.longitude,
         building_id: poi.building_id || null,
+        canvas_x: poi.canvas_x ?? null,
+        canvas_y: poi.canvas_y ?? null,
         is_active: true,
     };
 
@@ -242,6 +254,8 @@ export async function saveNavNode(slug: string, node: {
     label?: string;
     building_id?: string;
     floor_number?: number;
+    canvas_x?: number;
+    canvas_y?: number;
 }) {
     const { supabase, institutionId } = await verifyAdmin(slug);
 
@@ -253,6 +267,8 @@ export async function saveNavNode(slug: string, node: {
         label: node.label || null,
         building_id: node.building_id || null,
         floor_number: node.floor_number || 0,
+        canvas_x: node.canvas_x ?? null,
+        canvas_y: node.canvas_y ?? null,
     };
 
     if (node.id) {

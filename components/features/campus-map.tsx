@@ -15,11 +15,15 @@ import {
     Library, FlaskConical, BedDouble, Trophy, Utensils, ChevronUp,
     Locate, Compass, Star, Flag, ZoomIn, ZoomOut, Maximize2,
     ArrowRight, ArrowUpRight, ArrowDownRight, CornerDownRight, Footprints,
-    Minimize
+    Minimize, Globe
 } from "lucide-react";
 import { FloorPlanViewer, type FloorPlan } from "../campus/floor-plan";
 import { getFloorPlans } from "@/app/campus/[slug]/admin/map-editor/floor-plan-actions";
 import { toast } from "sonner";
+import { latToY, lonToX } from "@/lib/map-projection";
+import dynamic from "next/dynamic";
+
+const OSMBaseLayer = dynamic(() => import("../campus/osm-base-layer"), { ssr: false });
 
 // ─── Direction step type ───
 interface DirectionStep {
@@ -35,6 +39,7 @@ interface Building {
     category: string; floors: number; latitude: number; longitude: number;
     geo_polygon?: any; icon: string; color: string; operating_hours: string | null;
     sort_order: number; label_visible_zoom?: number; show_polygon?: boolean; rooms?: Room[];
+    canvas_x?: number; canvas_y?: number; canvas_w?: number; canvas_h?: number;
 }
 interface Room {
     id: string; building_id: string; name: string; room_number: string | null;
@@ -44,10 +49,12 @@ interface Room {
 interface POI {
     id: string; name: string; category: string; description: string | null;
     icon: string; latitude: number; longitude: number; building_id: string | null;
+    canvas_x?: number; canvas_y?: number;
 }
 interface NavNode {
     id: string; latitude: number; longitude: number; node_type: string;
     label: string | null; building_id: string | null;
+    canvas_x?: number; canvas_y?: number;
 }
 interface NavEdge { id: string; from_node_id: string; to_node_id: string; weight: number; }
 
@@ -167,10 +174,10 @@ const THEME_COLORS = {
 };
 
 // ─── Props ───
-interface CampusMapProps { buildings?: Building[]; pois?: POI[]; navNodes?: NavNode[]; navEdges?: NavEdge[]; slug?: string; }
+interface CampusMapProps { buildings?: Building[]; pois?: POI[]; navNodes?: NavNode[]; navEdges?: NavEdge[]; slug?: string; mapStyle?: any; }
 
 // ─── Main Component ───
-export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: propNavNodes, navEdges: propNavEdges }: CampusMapProps) {
+export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: propNavNodes, navEdges: propNavEdges, mapStyle }: CampusMapProps) {
     const buildings = propBuildings ?? DEFAULT_BUILDINGS;
     const pois = propPois ?? DEFAULT_POIS;
     const navNodes = propNavNodes ?? DEFAULT_NAV_NODES;
@@ -196,6 +203,7 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
     const [showNavPanel, setShowNavPanel] = useState(false);
     const [navDestination, setNavDestination] = useState<Building | null>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
+    const [showBaseMap, setShowBaseMap] = useState(false);
 
     // Floor plans state
     const [floorPlans, setFloorPlans] = useState<FloorPlan[]>([]);
@@ -204,6 +212,18 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
     const [viewingFloorPlan, setViewingFloorPlan] = useState<FloorPlan | null>(null);
 
     // Canvas state
+    const [manualStartPt, setManualStartPt] = useState<{ id: string, name: string } | null>(null);
+    const boundaryPolygon = useMemo(() => {
+        if (mapStyle?.boundary_polygon) {
+            try {
+                const parsed = typeof mapStyle.boundary_polygon === "string" ? JSON.parse(mapStyle.boundary_polygon) : mapStyle.boundary_polygon;
+                if (Array.isArray(parsed)) return parsed as { x: number; y: number }[];
+            } catch (e) { }
+        }
+        return [];
+    }, [mapStyle]);
+
+    // Canvas panning/zooming state
     const [zoom, setZoom] = useState(1);
     const [panOffset, setPanOffset] = useState({ x: 200, y: 100 });
     const [isPanning, setIsPanning] = useState(false);
@@ -249,9 +269,9 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
     // Element positions (auto-layout from initial data)
     const elPositions = useMemo(() => {
         const pos: Record<string, { x: number; y: number; w: number; h: number }> = {};
-        buildings.forEach((b, i) => { pos[b.id] = { x: 100 + (i % 5) * 280, y: 100 + Math.floor(i / 5) * 220, w: 220, h: 140 }; });
-        pois.forEach((p, i) => { pos[p.id] = { x: 1600 + (i % 4) * 100, y: 100 + Math.floor(i / 4) * 100, w: 24, h: 24 }; });
-        navNodes.forEach((n, i) => { pos[n.id] = { x: 100 + (i % 8) * 140, y: 900 + Math.floor(i / 8) * 140, w: 12, h: 12 }; });
+        buildings.forEach((b, i) => { pos[b.id] = { x: b.canvas_x ?? (100 + (i % 5) * 280), y: b.canvas_y ?? (100 + Math.floor(i / 5) * 220), w: b.canvas_w ?? 220, h: b.canvas_h ?? 140 }; });
+        pois.forEach((p, i) => { pos[p.id] = { x: p.canvas_x ?? (1600 + (i % 4) * 100), y: p.canvas_y ?? (100 + Math.floor(i / 4) * 100), w: 24, h: 24 }; });
+        navNodes.forEach((n, i) => { pos[n.id] = { x: n.canvas_x ?? (100 + (i % 8) * 140), y: n.canvas_y ?? (900 + Math.floor(i / 8) * 140), w: 12, h: 12 }; });
         return pos;
     }, [buildings, pois, navNodes]);
 
@@ -260,11 +280,11 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
         if (typeof navigator === "undefined" || !navigator.geolocation) return;
         navigator.geolocation.getCurrentPosition(
             (pos) => { setUserPosition([pos.coords.latitude, pos.coords.longitude]); setPositionAccuracy(pos.coords.accuracy); },
-            () => { }
+            (err) => { console.warn("Geolocation unavailable or denied:", err.message); }
         );
         const watchId = navigator.geolocation.watchPosition(
             (pos) => { setUserPosition([pos.coords.latitude, pos.coords.longitude]); setPositionAccuracy(pos.coords.accuracy); setIsTracking(true); },
-            () => { setIsTracking(false); },
+            (err) => { console.warn("Geolocation watch stopped:", err.message); setIsTracking(false); },
             { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
         );
         return () => navigator.geolocation.clearWatch(watchId);
@@ -349,8 +369,65 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
         return steps;
     }, [navEdges]);
 
+    // ─── GPS Projection ───
+    const gpsToCanvas = useCallback((lat: number, lon: number) => {
+        const anchorLat = mapStyle?.center_lat || 11.2274;
+        const anchorLon = mapStyle?.center_lng || 75.9104;
+        const anchorX = lonToX(anchorLon);
+        const anchorY = latToY(anchorLat);
+        return {
+            x: lonToX(lon) - anchorX,
+            y: latToY(lat) - anchorY
+        };
+    }, [mapStyle]);
+
     // ─── Navigate to building ───
     const navigateToBuilding = useCallback((building: Building) => {
+        // Geofencing Check (Only if relying on GPS)
+        if (!manualStartPt && userPosition) {
+            const userCanvasPt = gpsToCanvas(userPosition[0], userPosition[1]);
+
+            if (boundaryPolygon.length >= 3 && userCanvasPt) {
+                let isInside = false;
+                for (let i = 0, j = boundaryPolygon.length - 1; i < boundaryPolygon.length; j = i++) {
+                    const xi = boundaryPolygon[i].x, yi = boundaryPolygon[i].y;
+                    const xj = boundaryPolygon[j].x, yj = boundaryPolygon[j].y;
+                    const intersect = ((yi > userCanvasPt.y) !== (yj > userCanvasPt.y))
+                        && (userCanvasPt.x < (xj - xi) * (userCanvasPt.y - yi) / (yj - yi) + xi);
+                    if (intersect) isInside = !isInside;
+                }
+
+                if (!isInside) {
+                    const targetLat = building.latitude || 11.2274;
+                    const targetLon = building.longitude || 75.9104;
+                    window.open(`https://www.google.com/maps/dir/?api=1&destination=${targetLat},${targetLon}`, "_blank");
+                    toast.success("You are outside the campus boundary. Routing externally via Google Maps.");
+                    return;
+                }
+            } else {
+                // Fallback to generic distance check if boundary not drawn
+                let sumLat = 0, sumLon = 0, count = 0;
+                buildings.forEach(b => { if (b.latitude && b.longitude) { sumLat += b.latitude; sumLon += b.longitude; count++; } });
+                if (count > 0) {
+                    const centerLat = sumLat / count;
+                    const centerLon = sumLon / count;
+                    const R = 6371000;
+                    const dLat = (userPosition[0] - centerLat) * Math.PI / 180;
+                    const dLon = (userPosition[1] - centerLon) * Math.PI / 180;
+                    const a = Math.sin(dLat / 2) ** 2 + Math.cos(centerLat * Math.PI / 180) * Math.cos(userPosition[0] * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+                    const distanceToCampus = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+                    if (distanceToCampus > 200) {
+                        const targetLat = building.latitude || centerLat;
+                        const targetLon = building.longitude || centerLon;
+                        window.open(`https://www.google.com/maps/dir/?api=1&destination=${targetLat},${targetLon}`, "_blank");
+                        toast.success("Opening Google Maps for external routing.");
+                        return;
+                    }
+                }
+            }
+        }
+
         let buildingNode = navNodes.find((n) => n.building_id === building.id && n.node_type === "entrance");
 
         if (!buildingNode && navNodes.length > 0) {
@@ -362,17 +439,42 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
         }
 
         if (!buildingNode) { toast.error("No navigation pathways available nearby."); setSelectedBuilding(building); return; }
-        let startNode = navNodes.find((n) => n.label === "Main Gate");
-        if (userPosition) {
+        let startNode = undefined;
+
+        if (manualStartPt) {
+            // Priority 1: User selected a manual start point
+            // Check if it's a building
+            const manualB = buildings.find(b => b.id === manualStartPt.id);
+            if (manualB) {
+                startNode = navNodes.find(n => n.building_id === manualB.id && n.node_type === "entrance");
+                if (!startNode) {
+                    let minDist = Infinity;
+                    for (const node of navNodes) {
+                        const dist = Math.hypot(node.latitude - manualB.latitude, node.longitude - manualB.longitude);
+                        if (dist < minDist) { minDist = dist; startNode = node; }
+                    }
+                }
+            } else {
+                // Must be a POI
+                const manualP = pois.find(p => p.id === manualStartPt.id);
+                if (manualP) {
+                    let minDist = Infinity;
+                    for (const node of navNodes) {
+                        const dist = Math.hypot(node.latitude - manualP.latitude, node.longitude - manualP.longitude);
+                        if (dist < minDist) { minDist = dist; startNode = node; }
+                    }
+                }
+            }
+        } else if (userPosition) {
+            // Priority 2: GPS Coordinate
             let minDist = Infinity;
             for (const node of navNodes) {
                 const dist = Math.hypot(node.latitude - userPosition[0], node.longitude - userPosition[1]);
                 if (dist < minDist) { minDist = dist; startNode = node; }
             }
-        }
-
-        if (!startNode && navNodes.length > 0) {
-            startNode = navNodes[0]; // Fallback if no Main Gate and no GPS
+        } else {
+            // Priority 3: Fallback map anchor
+            startNode = navNodes.find((n) => n.label?.toLowerCase() === "main gate") || navNodes[0];
         }
 
         if (!startNode) { toast.error("No start location available."); return; }
@@ -390,11 +492,15 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
                 if (edge) totalWeight += edge.weight;
             }
             setRouteInfo({ distance: totalWeight, time: Math.ceil(totalWeight / 80) });
+        } else {
+            toast.error("No continuous route found to destination.");
         }
         setSelectedBuilding(building);
-    }, [navNodes, navEdges, userPosition, generateDirections]);
+    }, [navNodes, navEdges, userPosition, generateDirections, buildings, pois, manualStartPt, boundaryPolygon, gpsToCanvas]);
 
     const clearRoute = () => { setRoutePath(null); setRouteInfo(null); setNavSteps([]); setShowNavPanel(false); setNavDestination(null); };
+
+
 
     // ─── Hit testing ───
     const hitTestBuilding = useCallback((wx: number, wy: number): Building | null => {
@@ -412,29 +518,35 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
         const ctx = canvas.getContext("2d"); if (!ctx) return;
         const w = canvas.width, h = canvas.height;
 
-        // Background
-        ctx.fillStyle = tc.canvasBg;
-        ctx.fillRect(0, 0, w, h);
+        // Background — transparent when OSM base map is active
+        if (showBaseMap) {
+            ctx.clearRect(0, 0, w, h);
+        } else {
+            ctx.fillStyle = tc.canvasBg;
+            ctx.fillRect(0, 0, w, h);
+        }
 
         ctx.save();
         ctx.translate(panOffset.x, panOffset.y);
         ctx.scale(zoom, zoom);
 
-        // Grid
-        const gridStep = GRID_SIZE;
-        const startX = Math.floor(-panOffset.x / zoom / gridStep) * gridStep;
-        const startY = Math.floor(-panOffset.y / zoom / gridStep) * gridStep;
-        const endX = startX + w / zoom + gridStep * 2;
-        const endY = startY + h / zoom + gridStep * 2;
+        // Grid (hidden when OSM base map is active)
+        if (!showBaseMap) {
+            const gridStep = GRID_SIZE;
+            const startX = Math.floor(-panOffset.x / zoom / gridStep) * gridStep;
+            const startY = Math.floor(-panOffset.y / zoom / gridStep) * gridStep;
+            const endX = startX + w / zoom + gridStep * 2;
+            const endY = startY + h / zoom + gridStep * 2;
 
-        ctx.strokeStyle = tc.gridMinor; ctx.lineWidth = 0.5 / zoom;
-        for (let x = startX; x <= endX; x += gridStep) { ctx.beginPath(); ctx.moveTo(x, startY); ctx.lineTo(x, endY); ctx.stroke(); }
-        for (let y = startY; y <= endY; y += gridStep) { ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(endX, y); ctx.stroke(); }
-        // Major grid
-        ctx.strokeStyle = tc.gridMajor; ctx.lineWidth = 1 / zoom;
-        const ms = gridStep * 5;
-        for (let x = Math.floor(startX / ms) * ms; x <= endX; x += ms) { ctx.beginPath(); ctx.moveTo(x, startY); ctx.lineTo(x, endY); ctx.stroke(); }
-        for (let y = Math.floor(startY / ms) * ms; y <= endY; y += ms) { ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(endX, y); ctx.stroke(); }
+            ctx.strokeStyle = tc.gridMinor; ctx.lineWidth = 0.5 / zoom;
+            for (let x = startX; x <= endX; x += gridStep) { ctx.beginPath(); ctx.moveTo(x, startY); ctx.lineTo(x, endY); ctx.stroke(); }
+            for (let y = startY; y <= endY; y += gridStep) { ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(endX, y); ctx.stroke(); }
+            // Major grid
+            ctx.strokeStyle = tc.gridMajor; ctx.lineWidth = 1 / zoom;
+            const ms = gridStep * 5;
+            for (let x = Math.floor(startX / ms) * ms; x <= endX; x += ms) { ctx.beginPath(); ctx.moveTo(x, startY); ctx.lineTo(x, endY); ctx.stroke(); }
+            for (let y = Math.floor(startY / ms) * ms; y <= endY; y += ms) { ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(endX, y); ctx.stroke(); }
+        }
 
         // Buildings
         for (const b of filteredBuildings) {
@@ -634,15 +746,36 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
             }
         }
 
+        // User Position (Blue Dot)
+        if (userPosition) {
+            const canvasPos = gpsToCanvas(userPosition[0], userPosition[1]);
+            if (canvasPos) {
+                ctx.beginPath();
+                ctx.arc(canvasPos.x, canvasPos.y, 8 / zoom, 0, Math.PI * 2);
+                ctx.fillStyle = "rgba(59, 130, 246, 0.4)";
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.arc(canvasPos.x, canvasPos.y, 4 / zoom, 0, Math.PI * 2);
+                ctx.fillStyle = "#3b82f6";
+                ctx.strokeStyle = "#ffffff";
+                ctx.lineWidth = 1.5 / zoom;
+                ctx.fill();
+                ctx.stroke();
+            }
+        }
+
         ctx.restore();
-    }, [zoom, panOffset, filteredBuildings, filteredPois, elPositions, selectedBuilding, routePath, animPhase, tc]);
+    }, [zoom, panOffset, filteredBuildings, filteredPois, elPositions, selectedBuilding, routePath, animPhase, tc, showBaseMap, userPosition, gpsToCanvas]);
 
     // ─── Canvas resize ───
+    const [canvasSize, setCanvasSize] = useState({ w: 0, h: 0 });
     useEffect(() => {
         const resize = () => {
             const canvas = canvasRef.current; const container = containerRef.current;
             if (!canvas || !container) return;
             canvas.width = container.clientWidth; canvas.height = container.clientHeight;
+            setCanvasSize({ w: container.clientWidth, h: container.clientHeight });
         };
         resize();
         window.addEventListener("resize", resize);
@@ -717,9 +850,19 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
         <div ref={mapWrapperRef} className={`relative w-full overflow-hidden border shadow-lg ${isFullscreen ? 'h-screen rounded-none' : 'h-[calc(100vh-8rem)] rounded-xl'}`} style={{ backgroundColor: tc.canvasBg, zIndex: isFullscreen ? 50 : 1 }}>
             {/* Canvas */}
             <div ref={containerRef} className="absolute inset-0">
+                {showBaseMap && (
+                    <OSMBaseLayer
+                        panOffset={panOffset}
+                        zoom={zoom}
+                        canvasWidth={canvasSize.w}
+                        canvasHeight={canvasSize.h}
+                        anchorLat={mapStyle?.center_lat || 11.2274}
+                        anchorLon={mapStyle?.center_lng || 75.9104}
+                    />
+                )}
                 <canvas
                     ref={canvasRef} className="w-full h-full"
-                    style={{ cursor, touchAction: "none" }}
+                    style={{ cursor, touchAction: "none", position: "relative", zIndex: 1 }}
                     onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
                     onContextMenu={(e) => e.preventDefault()}
                     onTouchStart={(e) => {
@@ -750,14 +893,14 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
             </div>
 
             {/* Search bar */}
-            <div className="absolute left-4 right-4 top-4 z-[1000] md:left-4 md:right-auto md:w-80">
+            <div className="absolute left-3 right-16 top-3 z-[1000] md:left-4 md:top-4 md:right-auto md:w-80">
                 <div className="relative">
-                    <div className="flex items-center gap-2 rounded-xl bg-background/95 px-4 py-3 shadow-lg backdrop-blur-sm border cursor-pointer" onClick={() => setShowSearch(true)}>
-                        <Search className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex items-center gap-2 rounded-xl bg-background/95 px-3 py-2.5 shadow-lg backdrop-blur-sm border cursor-pointer md:px-4 md:py-3" onClick={() => setShowSearch(true)}>
+                        <Search className="h-4 w-4 text-muted-foreground shrink-0" />
                         {showSearch ? (
-                            <Input ref={searchInputRef} placeholder="Search buildings, rooms, places..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="border-0 bg-transparent p-0 h-auto text-sm focus-visible:ring-0" />
+                            <Input ref={searchInputRef} placeholder="Search campus..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="border-0 bg-transparent p-0 h-auto text-sm focus-visible:ring-0" />
                         ) : (
-                            <span className="text-sm text-muted-foreground">Search campus...</span>
+                            <span className="text-sm text-muted-foreground truncate">Search campus...</span>
                         )}
                         {showSearch && (
                             <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={(e) => { e.stopPropagation(); setShowSearch(false); setSearchQuery(""); }}>
@@ -775,7 +918,7 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
                                         const isBuilding = result.type === "building";
                                         const isRoom = result.type === "room";
                                         return (
-                                            <button key={`${result.type}-${idx}`} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors border-b last:border-0"
+                                            <button key={`${result.type}-${idx}`} className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-muted/50 transition-colors border-b last:border-0 md:gap-3 md:px-4 md:py-3"
                                                 onClick={() => { if (isBuilding) setSelectedBuilding(result.item as Building); else if (isRoom) setSelectedBuilding((result as any).building); setShowSearch(false); setSearchQuery(""); }}>
                                                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: isBuilding ? (result.item as Building).color + "20" : isRoom ? (result as any).building.color + "20" : "#64748b20" }}>
                                                     {isBuilding ? <Building2 className="h-4 w-4" style={{ color: (result.item as Building).color }} /> : <MapPin className="h-4 w-4 text-muted-foreground" />}
@@ -800,15 +943,15 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
             </div>
 
             {/* Category filters */}
-            <div className="absolute left-4 right-4 top-[72px] z-[1000] overflow-x-auto md:left-4 md:right-auto md:w-80">
-                <div className="flex gap-1.5 pb-1">
+            <div className="absolute left-3 right-16 top-[52px] z-[1000] overflow-x-auto md:left-4 md:right-auto md:top-[72px] md:w-80">
+                <div className="flex gap-1 pb-1 md:gap-1.5">
                     {CATEGORIES.map((cat) => {
                         const Icon = cat.icon;
                         const isActive = selectedCategory === cat.key;
                         return (
                             <button key={cat.key} onClick={() => { setSelectedCategory(cat.key); clearRoute(); setSelectedBuilding(null); }}
-                                className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all shadow-sm ${isActive ? "bg-primary text-primary-foreground" : "bg-background/90 text-foreground backdrop-blur-sm border hover:bg-muted"}`}>
-                                <Icon className="h-3.5 w-3.5" />{cat.label}
+                                className={`flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all shadow-sm md:gap-1.5 md:px-3 md:py-1.5 md:text-xs ${isActive ? "bg-primary text-primary-foreground" : "bg-background/90 text-foreground backdrop-blur-sm border hover:bg-muted"}`}>
+                                <Icon className="h-3 w-3 md:h-3.5 md:w-3.5" />{cat.label}
                             </button>
                         );
                     })}
@@ -818,6 +961,8 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
             {/* Right controls: zoom + locate */}
             <div className="absolute right-4 top-4 z-[1000] flex flex-col gap-2">
                 <div className="flex flex-col gap-1 rounded-xl bg-background/95 p-1 shadow-lg backdrop-blur-sm border">
+                    <Button variant={showBaseMap ? "default" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setShowBaseMap(!showBaseMap)} title="Toggle Map Layer"><Globe className="h-4 w-4" /></Button>
+                    <div className="w-full h-[1px] bg-border my-0.5" />
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={zoomIn} title="Zoom In"><ZoomIn className="h-4 w-4" /></Button>
                     <Badge variant="outline" className="text-[10px] justify-center py-0.5 px-1 font-mono">{Math.round(zoom * 100)}%</Badge>
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={zoomOut} title="Zoom Out"><ZoomOut className="h-4 w-4" /></Button>
@@ -826,7 +971,20 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
                         {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                     </Button>
                 </div>
-                <Button variant="secondary" size="icon" className={`h-10 w-10 rounded-xl shadow-lg ${isTracking ? "ring-2 ring-blue-500/50" : ""}`} disabled={!userPosition} title="My Location">
+                <Button variant="secondary" size="icon" className={`h-10 w-10 rounded-xl shadow-lg ${isTracking ? "ring-2 ring-blue-500/50" : ""}`} disabled={!userPosition} title="My Location" onClick={() => {
+                    if (userPosition) {
+                        const pt = gpsToCanvas(userPosition[0], userPosition[1]);
+                        if (pt && canvasRef.current) {
+                            const cw = canvasRef.current.width;
+                            const ch = canvasRef.current.height;
+                            setZoom(1.5);
+                            setPanOffset({
+                                x: cw / 2 - pt.x * 1.5,
+                                y: ch / 2 - pt.y * 1.5
+                            });
+                        }
+                    }
+                }}>
                     <Locate className={`h-4 w-4 ${isTracking ? "text-blue-500" : ""}`} />
                 </Button>
             </div>
@@ -974,6 +1132,38 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
                                 {selectedBuilding.operating_hours && (
                                     <div className="flex items-center gap-2 mb-4 text-sm"><Clock className="h-4 w-4 text-muted-foreground" /><span>{selectedBuilding.operating_hours}</span></div>
                                 )}
+                                <div className="mb-4 p-3 bg-muted/30 rounded-lg border flex flex-col gap-2">
+                                    <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                                        <MapPin className="h-3.5 w-3.5" /> Starting Location
+                                    </label>
+                                    <select
+                                        className="w-full bg-background border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                        value={manualStartPt?.id || ""}
+                                        onChange={(e) => {
+                                            if (!e.target.value) setManualStartPt(null);
+                                            else {
+                                                const b = buildings.find(x => x.id === e.target.value);
+                                                if (b) setManualStartPt({ id: b.id, name: b.name });
+                                                else {
+                                                    const p = pois.find(x => x.id === e.target.value);
+                                                    if (p) setManualStartPt({ id: p.id, name: p.name });
+                                                }
+                                            }
+                                        }}
+                                    >
+                                        <option value="">Current Location (GPS)</option>
+                                        <optgroup label="Buildings">
+                                            {buildings.filter(b => b.id !== selectedBuilding.id).map(b => (
+                                                <option key={b.id} value={b.id}>{b.name}</option>
+                                            ))}
+                                        </optgroup>
+                                        <optgroup label="Points of Interest">
+                                            {pois.map(p => (
+                                                <option key={p.id} value={p.id}>{p.name}</option>
+                                            ))}
+                                        </optgroup>
+                                    </select>
+                                </div>
                                 <div className="grid grid-cols-2 gap-2 mb-4">
                                     <Button className="w-full gap-2" onClick={() => navigateToBuilding(selectedBuilding)}>
                                         <Navigation className="h-4 w-4" />Navigate

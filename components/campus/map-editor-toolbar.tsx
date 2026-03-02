@@ -7,9 +7,10 @@ import {
     MousePointer2, Square, Pentagon, Minus, MapPin, Type,
     Trash2, Undo2, Redo2, Magnet, Save, Eye, GitBranch,
     Route, ZoomIn, ZoomOut, Maximize2, Grid3X3, ChevronUp,
-    HelpCircle, Hand, Maximize, Minimize, Circle
+    HelpCircle, Hand, Maximize, Minimize, Circle, Flame, Map, Globe
 } from "lucide-react";
 import { useState } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 
 export type DrawMode =
     | "select"
@@ -22,6 +23,7 @@ export type DrawMode =
     | "label"
     | "navnode"
     | "navedge"
+    | "boundary"
     | "eraser";
 
 interface MapEditorToolbarProps {
@@ -35,6 +37,8 @@ interface MapEditorToolbarProps {
     canRedo: boolean;
     onSave: () => void;
     saving: boolean;
+    showBaseMap: boolean;
+    onToggleBaseMap: () => void;
     showNavGraph: boolean;
     onToggleNavGraph: () => void;
     hasChanges: boolean;
@@ -46,6 +50,7 @@ interface MapEditorToolbarProps {
     isAutoSaving?: boolean;
     isFullscreen?: boolean;
     onToggleFullscreen?: () => void;
+    onCleanMap?: () => void;
 }
 
 const DRAW_TOOLS: { mode: DrawMode; icon: any; label: string; shortcut?: string }[] = [
@@ -54,6 +59,7 @@ const DRAW_TOOLS: { mode: DrawMode; icon: any; label: string; shortcut?: string 
     { mode: "rect", icon: Square, label: "Rectangle", shortcut: "R" },
     { mode: "circle", icon: Circle, label: "Circle", shortcut: "C" },
     { mode: "polygon", icon: Pentagon, label: "Polygon", shortcut: "P" },
+    { mode: "boundary", icon: Map, label: "Campus Boundary", shortcut: "B" },
     { mode: "line", icon: Minus, label: "Line", shortcut: "L" },
     { mode: "marker", icon: MapPin, label: "POI", shortcut: "M" },
     { mode: "label", icon: Type, label: "Label", shortcut: "T" },
@@ -91,18 +97,19 @@ function ToolButton({ mode, icon: Icon, label, shortcut, isActive, isEraser, onC
 export function MapEditorToolbar({
     activeMode, onModeChange, snapEnabled, onSnapToggle,
     onUndo, onRedo, canUndo, canRedo, onSave, saving,
-    showNavGraph, onToggleNavGraph, hasChanges,
+    showBaseMap, onToggleBaseMap, showNavGraph, onToggleNavGraph, hasChanges,
     zoom, onZoomIn, onZoomOut, onFitAll, onHelp, isAutoSaving,
-    isFullscreen, onToggleFullscreen
+    isFullscreen, onToggleFullscreen, onCleanMap
 }: MapEditorToolbarProps) {
     const [mobileExpanded, setMobileExpanded] = useState(false);
+    const [cleanMapOpen, setCleanMapOpen] = useState(false);
 
     return (
-        <>
+        <Dialog open={cleanMapOpen} onOpenChange={setCleanMapOpen}>
             {/* ─── Desktop: Vertical left sidebar (hidden on mobile) ─── */}
             <div className="hidden md:flex absolute left-3 top-1/2 -translate-y-1/2 z-[1000] flex-col gap-1.5">
                 {/* Drawing tools */}
-                <div className="flex flex-col gap-0.5 rounded-xl bg-background/95 p-1.5 shadow-lg backdrop-blur-sm border">
+                <div className="grid grid-cols-2 gap-0.5 rounded-xl bg-background/95 p-1.5 shadow-lg backdrop-blur-sm border">
                     {DRAW_TOOLS.map((tool) => (
                         <ToolButton key={tool.mode} {...tool} isActive={activeMode === tool.mode} isEraser={tool.mode === "eraser"}
                             onClick={() => onModeChange(tool.mode)} />
@@ -110,7 +117,7 @@ export function MapEditorToolbar({
                 </div>
 
                 {/* Nav graph tools */}
-                <div className="flex flex-col gap-0.5 rounded-xl bg-background/95 p-1.5 shadow-lg backdrop-blur-sm border">
+                <div className="grid grid-cols-2 gap-0.5 rounded-xl bg-background/95 p-1.5 shadow-lg backdrop-blur-sm border items-center justify-items-center">
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <Button variant={showNavGraph ? "default" : "ghost"} size="icon" className="h-9 w-9" onClick={onToggleNavGraph}>
@@ -119,6 +126,14 @@ export function MapEditorToolbar({
                         </TooltipTrigger>
                         <TooltipContent side="right" sideOffset={8}>{showNavGraph ? "Hide" : "Show"} Nav Graph</TooltipContent>
                     </Tooltip>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant={showBaseMap ? "default" : "ghost"} size="icon" className="h-9 w-9" onClick={onToggleBaseMap}>
+                                <Globe className="h-4 w-4" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" sideOffset={8}>{showBaseMap ? "Hide" : "Show"} Map Layer</TooltipContent>
+                    </Tooltip>
                     {NAV_TOOLS.map((tool) => (
                         <ToolButton key={tool.mode} {...tool} isActive={activeMode === tool.mode}
                             onClick={() => onModeChange(tool.mode)} />
@@ -126,10 +141,11 @@ export function MapEditorToolbar({
                 </div>
 
                 {/* Zoom + Actions */}
-                <div className="flex flex-col gap-0.5 rounded-xl bg-background/95 p-1.5 shadow-lg backdrop-blur-sm border">
+                <div className="grid grid-cols-2 gap-0.5 rounded-xl bg-background/95 p-1.5 shadow-lg backdrop-blur-sm border items-center justify-items-center">
                     <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9" onClick={onZoomIn}><ZoomIn className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent side="right" sideOffset={8}>Zoom In</TooltipContent></Tooltip>
-                    <Badge variant="outline" className="text-[10px] justify-center py-0.5 px-1 font-mono">{Math.round(zoom * 100)}%</Badge>
                     <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9" onClick={onZoomOut}><ZoomOut className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent side="right" sideOffset={8}>Zoom Out</TooltipContent></Tooltip>
+
+                    <Badge variant="outline" className="col-span-2 w-full text-[10px] justify-center py-0.5 px-1 font-mono">{Math.round(zoom * 100)}%</Badge>
                     <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9" onClick={onFitAll}><Maximize2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent side="right" sideOffset={8}>Fit All</TooltipContent></Tooltip>
                     {onToggleFullscreen && (
                         <Tooltip><TooltipTrigger asChild>
@@ -138,10 +154,18 @@ export function MapEditorToolbar({
                             </Button>
                         </TooltipTrigger><TooltipContent side="right" sideOffset={8}>{isFullscreen ? "Exit Fullscreen" : "Fullscreen"}</TooltipContent></Tooltip>
                     )}
-                    <div className="h-px bg-border my-0.5" />
+                    <div className="col-span-2 h-px w-full bg-border my-0.5" />
                     <Tooltip><TooltipTrigger asChild><Button variant={snapEnabled ? "secondary" : "ghost"} size="icon" className="h-9 w-9" onClick={onSnapToggle}><Grid3X3 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent side="right" sideOffset={8}>Snap {snapEnabled ? "On" : "Off"}</TooltipContent></Tooltip>
+                    {onHelp && (
+                        <Tooltip><TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-9 w-9 text-blue-500 hover:text-blue-600 hover:bg-blue-50" onClick={onHelp}>
+                                <HelpCircle className="h-4 w-4" />
+                            </Button>
+                        </TooltipTrigger><TooltipContent side="right" sideOffset={8}>Map Editor Guide</TooltipContent></Tooltip>
+                    )}
                     <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9" onClick={onUndo} disabled={!canUndo}><Undo2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent side="right" sideOffset={8}>Undo</TooltipContent></Tooltip>
                     <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9" onClick={onRedo} disabled={!canRedo}><Redo2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent side="right" sideOffset={8}>Redo</TooltipContent></Tooltip>
+
                     <Tooltip><TooltipTrigger asChild>
                         <Button variant={hasChanges ? "default" : "ghost"} size="icon"
                             className={`h-9 w-9 ${hasChanges ? "bg-green-600 hover:bg-green-700 text-white" : ""}`}
@@ -149,12 +173,12 @@ export function MapEditorToolbar({
                             <Save className={`h-4 w-4 ${(saving || isAutoSaving) ? "animate-spin" : ""}`} />
                         </Button>
                     </TooltipTrigger><TooltipContent side="right" sideOffset={8}>{(saving || isAutoSaving) ? "Saving..." : "Save All"}</TooltipContent></Tooltip>
-                    {onHelp && (
+                    {onCleanMap && (
                         <Tooltip><TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-9 w-9 text-blue-500 hover:text-blue-600 hover:bg-blue-50" onClick={onHelp}>
-                                <HelpCircle className="h-4 w-4" />
+                            <Button variant="ghost" size="icon" className="h-9 w-9 text-red-500 hover:text-white hover:bg-red-600 transition-colors" onClick={() => setCleanMapOpen(true)}>
+                                <Flame className="h-4 w-4" />
                             </Button>
-                        </TooltipTrigger><TooltipContent side="right" sideOffset={8}>Map Editor Guide</TooltipContent></Tooltip>
+                        </TooltipTrigger><TooltipContent side="right" sideOffset={8}>Clean Map (Delete All)</TooltipContent></Tooltip>
                     )}
                 </div>
             </div>
@@ -175,6 +199,8 @@ export function MapEditorToolbar({
                                     </Button>
                                 );
                             })}
+                            <Button variant={showBaseMap ? "default" : "ghost"} size="sm" className="h-9 flex flex-col gap-0.5 text-[9px]"
+                                onClick={onToggleBaseMap}><Globe className="h-3.5 w-3.5" />Map</Button>
                             <Button variant={showNavGraph ? "default" : "ghost"} size="sm" className="h-9 flex flex-col gap-0.5 text-[9px]"
                                 onClick={onToggleNavGraph}><Eye className="h-3.5 w-3.5" />Graph</Button>
                             <Button variant={snapEnabled ? "secondary" : "ghost"} size="sm" className="h-9 flex flex-col gap-0.5 text-[9px]"
@@ -214,6 +240,11 @@ export function MapEditorToolbar({
                             onClick={onSave} disabled={saving || !hasChanges}>
                             <Save className={`h-3.5 w-3.5 ${saving ? "animate-spin" : ""}`} />
                         </Button>
+                        {onCleanMap && (
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => setCleanMapOpen(true)}>
+                                <Flame className="h-3.5 w-3.5" />
+                            </Button>
+                        )}
                         {onHelp && (
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500" onClick={onHelp}>
                                 <HelpCircle className="h-3.5 w-3.5" />
@@ -222,6 +253,29 @@ export function MapEditorToolbar({
                     </div>
                 </div>
             </div>
-        </>
+
+            {/* Clean Map Confirmation Dialog */}
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle className="text-destructive flex items-center gap-2">
+                        <Flame className="h-5 w-5" /> Clean Map
+                    </DialogTitle>
+                    <DialogDescription>
+                        This will permanently delete all buildings, POIs, navigation nodes, and paths from the map.
+                        This action cannot be undone. Are you absolutely sure?
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="sm:justify-between mt-4">
+                    <DialogClose asChild>
+                        <Button variant="outline">Cancel</Button>
+                    </DialogClose>
+                    <DialogClose asChild>
+                        <Button variant="destructive" onClick={onCleanMap}>
+                            Yes, delete everything
+                        </Button>
+                    </DialogClose>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }

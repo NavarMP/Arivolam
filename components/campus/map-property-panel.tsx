@@ -359,14 +359,21 @@ export function MapPropertyPanel({
                                 {/* Manage Floors Button */}
                                 {onManageFloors && selectedItem.data.id && (
                                     <div className="pt-2">
-                                        <Button
-                                            variant="outline"
-                                            className="w-full gap-2 border-primary/20 hover:border-primary/50"
+                                        <div
+                                            role="button"
+                                            tabIndex={0}
+                                            className="flex w-full items-center justify-center gap-2 rounded-md border border-primary/20 hover:border-primary/50 bg-transparent px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 cursor-pointer"
                                             onClick={onManageFloors}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                    e.preventDefault();
+                                                    onManageFloors();
+                                                }
+                                            }}
                                         >
                                             <Layers className="h-4 w-4 text-primary" />
                                             Manage Floor Plans
-                                        </Button>
+                                        </div>
                                     </div>
                                 )}
                             </div>

@@ -60,15 +60,10 @@ export default async function MapEditorPage({
         );
     }
 
-    // Determine map center from existing buildings or default
-    const mapCenter: [number, number] = mapData.buildings.length > 0
-        ? [
-            mapData.buildings.reduce((s: number, b: any) => s + b.latitude, 0) / mapData.buildings.length,
-            mapData.buildings.reduce((s: number, b: any) => s + b.longitude, 0) / mapData.buildings.length,
-        ]
-        : mapData.mapStyle
-            ? [mapData.mapStyle.center_lat, mapData.mapStyle.center_lng]
-            : [11.2274, 75.9104]; // Default: SIAS
+    // Determine map center deterministically from mapStyle or default
+    const mapCenter: [number, number] = mapData.mapStyle?.center_lat && mapData.mapStyle?.center_lng
+        ? [mapData.mapStyle.center_lat, mapData.mapStyle.center_lng]
+        : [11.2274, 75.9104]; // Default: SIAS
 
     return (
         <div className="p-2 md:p-4">
@@ -87,6 +82,7 @@ export default async function MapEditorPage({
                 navEdges={mapData.navEdges}
                 mapCenter={mapCenter}
                 slug={slug}
+                mapStyle={mapData.mapStyle}
             />
         </div>
     );

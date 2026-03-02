@@ -5,6 +5,7 @@ import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useDebounce } from "react-use";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AnimatePresence, motion } from "framer-motion";
@@ -30,12 +31,17 @@ import {
     deleteNavNode as deleteNavNodeAction,
     saveNavEdge,
     deleteNavEdge as deleteNavEdgeAction,
+    saveMapStyle,
 } from "@/app/campus/[slug]/admin/map-editor/actions";
 import {
     saveFloorPlan,
     getFloorPlans,
     deleteFloorPlan as deleteFloorPlanAction,
 } from "@/app/campus/[slug]/admin/map-editor/floor-plan-actions";
+import dynamic from "next/dynamic";
+
+const OSMBaseLayer = dynamic(() => import("./osm-base-layer"), { ssr: false });
+import { lonToX, latToY, xToLon, yToLat } from "@/lib/map-projection";
 
 // ─── Types ───
 
@@ -55,6 +61,10 @@ interface MapBuilding {
     sort_order: number;
     label_visible_zoom?: number;
     show_polygon?: boolean;
+    canvas_x?: number;
+    canvas_y?: number;
+    canvas_w?: number;
+    canvas_h?: number;
 }
 
 interface MapPOI {
@@ -66,6 +76,8 @@ interface MapPOI {
     latitude: number;
     longitude: number;
     building_id?: string;
+    canvas_x?: number;
+    canvas_y?: number;
 }
 
 interface MapNavNode {
@@ -75,6 +87,8 @@ interface MapNavNode {
     node_type: string;
     label?: string;
     building_id?: string;
+    canvas_x?: number;
+    canvas_y?: number;
 }
 
 interface MapNavEdge {
@@ -105,6 +119,7 @@ interface MapEditorProps {
     navEdges: MapNavEdge[];
     mapCenter?: [number, number];
     slug: string;
+    mapStyle?: any;
 }
 
 // ─── Constants ───
@@ -165,6 +180,88 @@ const NAV_COLORS: Record<string, string> = {
     poi: "#06b6d4",
 };
 
+// ─── Custom Geosearch UI ───
+function MapGeoSearch({ onLocationFound }: { onLocationFound: (lat: number, lon: number) => void }) {
+    const [query, setQuery] = useState("");
+    const [results, setResults] = useState<any[]>([]);
+    const [searching, setSearching] = useState(false);
+    const [provider, setProvider] = useState<any>(null);
+    const [showResults, setShowResults] = useState(false);
+
+    useEffect(() => {
+        import("leaflet-geosearch").then((mod) => {
+            setProvider(new mod.OpenStreetMapProvider());
+        });
+    }, []);
+
+    useEffect(() => {
+        if (!provider || !query.trim()) {
+            setResults([]);
+            return;
+        }
+        let isActive = true;
+        setSearching(true);
+        const timer = setTimeout(() => {
+            provider.search({ query }).then((res: any) => {
+                if (isActive) {
+                    setResults(res);
+                    setSearching(false);
+                    setShowResults(true);
+                }
+            });
+        }, 600);
+        return () => { isActive = false; clearTimeout(timer); };
+    }, [query, provider]);
+
+    return (
+        <div className="absolute top-3 right-3 z-[1001] w-64 md:top-4 md:right-4 md:w-80">
+            <div className="relative">
+                <div className="flex items-center gap-2 rounded-xl bg-background/95 px-4 py-3 shadow-lg backdrop-blur-sm border">
+                    <Search className="h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Search global addresses (OSM)..."
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        className="border-0 bg-transparent p-0 h-auto text-sm focus-visible:ring-0"
+                        onFocus={() => { if (results.length > 0) setShowResults(true); }}
+                    />
+                    {searching ? (
+                        <div className="h-4 w-4 rounded-full border-2 border-primary border-t-transparent animate-spin shrink-0" />
+                    ) : query.length > 0 && (
+                        <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => { setQuery(""); setResults([]); setShowResults(false); }}>
+                            <X className="h-3 w-3" />
+                        </Button>
+                    )}
+                </div>
+                <AnimatePresence>
+                    {showResults && results.length > 0 && (
+                        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="absolute left-0 right-0 top-full mt-2 rounded-xl bg-background/95 backdrop-blur-sm border shadow-lg overflow-hidden max-h-72 flex flex-col">
+                            <div className="max-h-72 overflow-y-auto">
+                                {results.map((result: any, idx: number) => (
+                                    <button key={idx} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors border-b last:border-0"
+                                        onClick={() => {
+                                            onLocationFound(result.y, result.x);
+                                            setShowResults(false);
+                                            setQuery(result.label);
+                                        }}>
+                                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                                            <MapPin className="h-4 w-4 text-primary" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium truncate">{result.label.split(',')[0]}</p>
+                                            <p className="text-[10px] text-muted-foreground truncate">{result.label}</p>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+        </div>
+    );
+}
+
 // ─── Main Editor Component ───
 
 export function MapEditor({
@@ -174,6 +271,7 @@ export function MapEditor({
     navEdges: initialNavEdges,
     mapCenter = [11.2274, 75.9104],
     slug,
+    mapStyle,
 }: MapEditorProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -186,6 +284,19 @@ export function MapEditor({
     const [pois, setPOIs] = useState(initialPOIs);
     const [navNodes, setNavNodes] = useState(initialNavNodes);
     const [navEdges, setNavEdges] = useState(initialNavEdges);
+    const [boundaryPolygon, setBoundaryPolygon] = useState<{ x: number; y: number }[]>(() => {
+        if (mapStyle?.boundary_polygon) {
+            try {
+                const parsed = typeof mapStyle.boundary_polygon === "string"
+                    ? JSON.parse(mapStyle.boundary_polygon)
+                    : mapStyle.boundary_polygon;
+                if (Array.isArray(parsed)) return parsed;
+            } catch (e) {
+                console.error("Failed to parse boundary_polygon", e);
+            }
+        }
+        return [];
+    });
 
     // Canvas state
     const [zoom, setZoom] = useState(1);
@@ -193,6 +304,7 @@ export function MapEditor({
     const [drawMode, setDrawMode] = useState<DrawMode>("select");
     const [snapEnabled, setSnapEnabled] = useState(true);
     const [showNavGraph, setShowNavGraph] = useState(true);
+    const [showBaseMap, setShowBaseMap] = useState(false);
     const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
     const [saving, setSaving] = useState(false);
     const [hasChanges, setHasChanges] = useState(false);
@@ -233,6 +345,20 @@ export function MapEditor({
 
     // Keyboard modifiers
     const [spaceHeld, setSpaceHeld] = useState(false);
+    useEffect(() => {
+        const handlerDown = (e: KeyboardEvent) => {
+            if (e.code === "Space" && !e.repeat && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
+                e.preventDefault();
+                setSpaceHeld(true);
+            }
+        };
+        const handlerUp = (e: KeyboardEvent) => {
+            if (e.code === "Space") setSpaceHeld(false);
+        };
+        window.addEventListener("keydown", handlerDown);
+        window.addEventListener("keyup", handlerUp);
+        return () => { window.removeEventListener("keydown", handlerDown); window.removeEventListener("keyup", handlerUp); };
+    }, []);
 
     // Fullscreen state
     const mapWrapperRef = useRef<HTMLDivElement>(null);
@@ -271,9 +397,9 @@ export function MapEditor({
     // Mutable element positions (initialized from data, updated by drag/resize)
     const [elPositions, setElPositions] = useState<Record<string, { x: number; y: number; w: number; h: number }>>(() => {
         const pos: Record<string, { x: number; y: number; w: number; h: number }> = {};
-        initialBuildings.forEach((b, i) => { pos[b.id] = { x: 100 + (i % 5) * 250, y: 100 + Math.floor(i / 5) * 200, w: 200, h: 120 }; });
-        initialPOIs.forEach((p, i) => { pos[p.id] = { x: 1500 + (i % 4) * 80, y: 100 + Math.floor(i / 4) * 80, w: 20, h: 20 }; });
-        initialNavNodes.forEach((n, i) => { pos[n.id] = { x: 100 + (i % 8) * 120, y: 800 + Math.floor(i / 8) * 120, w: 12, h: 12 }; });
+        initialBuildings.forEach((b, i) => { pos[b.id] = { x: b.canvas_x ?? (100 + (i % 5) * 250), y: b.canvas_y ?? (100 + Math.floor(i / 5) * 200), w: b.canvas_w ?? 200, h: b.canvas_h ?? 120 }; });
+        initialPOIs.forEach((p, i) => { pos[p.id] = { x: p.canvas_x ?? (1500 + (i % 4) * 80), y: p.canvas_y ?? (100 + Math.floor(i / 4) * 80), w: 20, h: 20 }; });
+        initialNavNodes.forEach((n, i) => { pos[n.id] = { x: n.canvas_x ?? (100 + (i % 8) * 120), y: n.canvas_y ?? (800 + Math.floor(i / 8) * 120), w: 12, h: 12 }; });
         return pos;
     });
 
@@ -290,28 +416,50 @@ export function MapEditor({
             try {
                 // Find what changed and save it
                 const promises: Promise<any>[] = [];
+                const anchorX = lonToX(mapCenter[1]);
+                const anchorY = latToY(mapCenter[0]);
+
                 for (const id in elPositions) {
                     const pos = elPositions[id];
+                    const trueLon = xToLon(pos.x + anchorX);
+                    const trueLat = yToLat(pos.y + anchorY);
+
                     // Check if it's a building
                     const b = buildings.find(x => x.id === id);
                     if (b) {
                         promises.push(saveBuilding(slug, {
                             ...b,
-                            latitude: mapCenter[0], // Simplified keeping original logic
-                            longitude: mapCenter[1],
+                            canvas_x: pos.x,
+                            canvas_y: pos.y,
+                            canvas_w: pos.w,
+                            canvas_h: pos.h,
+                            latitude: trueLat,
+                            longitude: trueLon,
                         }));
                         continue;
                     }
                     // Nav node
                     const n = navNodes.find(x => x.id === id);
                     if (n) {
-                        promises.push(saveNavNode(slug, { ...n }));
+                        promises.push(saveNavNode(slug, {
+                            ...n,
+                            canvas_x: pos.x,
+                            canvas_y: pos.y,
+                            latitude: trueLat,
+                            longitude: trueLon,
+                        }));
                         continue;
                     }
                     // POI
                     const p = pois.find(x => x.id === id);
                     if (p) {
-                        promises.push(savePOI(slug, { ...p }));
+                        promises.push(savePOI(slug, {
+                            ...p,
+                            canvas_x: pos.x,
+                            canvas_y: pos.y,
+                            latitude: trueLat,
+                            longitude: trueLon,
+                        }));
                         continue;
                     }
                 }
@@ -483,55 +631,77 @@ export function MapEditor({
         const w = canvas.width;
         const h = canvas.height;
 
-        // Clear
-        ctx.fillStyle = tc.canvasBg;
-        ctx.fillRect(0, 0, w, h);
+        // Clear — transparent when OSM base map is active, opaque otherwise
+        if (showBaseMap) {
+            ctx.clearRect(0, 0, w, h);
+        } else {
+            ctx.fillStyle = tc.canvasBg;
+            ctx.fillRect(0, 0, w, h);
+        }
 
         ctx.save();
         ctx.translate(panOffset.x, panOffset.y);
         ctx.scale(zoom, zoom);
 
-        // ── Grid ──
-        const gridStep = GRID_SIZE;
-        const startX = Math.floor(-panOffset.x / zoom / gridStep) * gridStep;
-        const startY = Math.floor(-panOffset.y / zoom / gridStep) * gridStep;
-        const endX = startX + w / zoom + gridStep * 2;
-        const endY = startY + h / zoom + gridStep * 2;
+        // ── Grid (hidden when OSM base map is active) ──
+        if (!showBaseMap) {
+            const gridStep = GRID_SIZE;
+            const startX = Math.floor(-panOffset.x / zoom / gridStep) * gridStep;
+            const startY = Math.floor(-panOffset.y / zoom / gridStep) * gridStep;
+            const endX = startX + w / zoom + gridStep * 2;
+            const endY = startY + h / zoom + gridStep * 2;
 
-        ctx.strokeStyle = tc.gridMinor;
-        ctx.lineWidth = 0.5 / zoom;
+            ctx.strokeStyle = tc.gridMinor;
+            ctx.lineWidth = 0.5 / zoom;
 
-        for (let x = startX; x <= endX; x += gridStep) {
-            ctx.beginPath();
-            ctx.moveTo(x, startY);
-            ctx.lineTo(x, endY);
-            ctx.stroke();
+            for (let x = startX; x <= endX; x += gridStep) {
+                ctx.beginPath();
+                ctx.moveTo(x, startY);
+                ctx.lineTo(x, endY);
+                ctx.stroke();
+            }
+            for (let y = startY; y <= endY; y += gridStep) {
+                ctx.beginPath();
+                ctx.moveTo(startX, y);
+                ctx.lineTo(endX, y);
+                ctx.stroke();
+            }
+
+            // Major grid
+            ctx.strokeStyle = tc.gridMajor;
+            ctx.lineWidth = 1 / zoom;
+            const ms = gridStep * 5;
+            for (let x = Math.floor(startX / ms) * ms; x <= endX; x += ms) {
+                ctx.beginPath();
+                ctx.moveTo(x, startY);
+                ctx.lineTo(x, endY);
+                ctx.stroke();
+            }
+            for (let y = Math.floor(startY / ms) * ms; y <= endY; y += ms) {
+                ctx.beginPath();
+                ctx.moveTo(startX, y);
+                ctx.lineTo(endX, y);
+                ctx.stroke();
+            }
         }
-        for (let y = startY; y <= endY; y += gridStep) {
-            ctx.beginPath();
-            ctx.moveTo(startX, y);
-            ctx.lineTo(endX, y);
-            ctx.stroke();
-        }
 
-        // Major grid lines every 5 cells
-        ctx.strokeStyle = tc.gridMajor;
-        ctx.lineWidth = 1 / zoom;
-        const majorStep = gridStep * 5;
-        const majorStartX = Math.floor(startX / majorStep) * majorStep;
-        const majorStartY = Math.floor(startY / majorStep) * majorStep;
+        // ── Boundary Polygon ──
+        if (boundaryPolygon.length >= 3) {
+            ctx.beginPath();
+            ctx.moveTo(boundaryPolygon[0].x, boundaryPolygon[0].y);
+            for (let i = 1; i < boundaryPolygon.length; i++) {
+                ctx.lineTo(boundaryPolygon[i].x, boundaryPolygon[i].y);
+            }
+            ctx.closePath();
 
-        for (let x = majorStartX; x <= endX; x += majorStep) {
-            ctx.beginPath();
-            ctx.moveTo(x, startY);
-            ctx.lineTo(x, endY);
+            ctx.fillStyle = resolvedTheme === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)";
+            ctx.fill();
+
+            ctx.setLineDash([15, 10]);
+            ctx.lineWidth = 4 / zoom;
+            ctx.strokeStyle = resolvedTheme === "dark" ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.3)";
             ctx.stroke();
-        }
-        for (let y = majorStartY; y <= endY; y += majorStep) {
-            ctx.beginPath();
-            ctx.moveTo(startX, y);
-            ctx.lineTo(endX, y);
-            ctx.stroke();
+            ctx.setLineDash([]);
         }
 
         // ── Buildings ──
@@ -752,7 +922,7 @@ export function MapEditor({
         }
 
         // Polygon drawing preview
-        if (drawMode === "polygon" && polygonPoints.length > 0) {
+        if ((drawMode === "polygon" || drawMode === "boundary") && polygonPoints.length > 0) {
             ctx.beginPath();
             ctx.moveTo(polygonPoints[0].x, polygonPoints[0].y);
             for (let i = 1; i < polygonPoints.length; i++) {
@@ -761,7 +931,7 @@ export function MapEditor({
             if (drawCurrent) {
                 ctx.lineTo(drawCurrent.x, drawCurrent.y);
             }
-            ctx.strokeStyle = "#22c55e";
+            ctx.strokeStyle = drawMode === "boundary" ? "#7c3aed" : "#22c55e";
             ctx.lineWidth = 2 / zoom;
             ctx.setLineDash([6 / zoom, 3 / zoom]);
             ctx.stroke();
@@ -771,7 +941,7 @@ export function MapEditor({
             for (const pt of polygonPoints) {
                 ctx.beginPath();
                 ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
-                ctx.fillStyle = "#22c55e";
+                ctx.fillStyle = drawMode === "boundary" ? "#7c3aed" : "#22c55e";
                 ctx.fill();
             }
         }
@@ -809,10 +979,11 @@ export function MapEditor({
         ctx.fillText("0,0", ox + 4, oy - 4);
 
     }, [zoom, panOffset, buildingElements, poiElements, navNodeElements, navEdges,
-        showNavGraph, selectedItem, drawMode, isDrawing, drawStart, drawCurrent,
+        showNavGraph, showBaseMap, selectedItem, drawMode, isDrawing, drawStart, drawCurrent,
         polygonPoints, linePoints, edgeStartNode, tc]);
 
     // ─── Resize handler ───
+    const [canvasSize, setCanvasSize] = useState({ w: 0, h: 0 });
     useEffect(() => {
         const resize = () => {
             const canvas = canvasRef.current;
@@ -820,6 +991,7 @@ export function MapEditor({
             if (!canvas || !container) return;
             canvas.width = container.clientWidth;
             canvas.height = container.clientHeight;
+            setCanvasSize({ w: container.clientWidth, h: container.clientHeight });
             render();
         };
 
@@ -838,6 +1010,50 @@ export function MapEditor({
         rafId = requestAnimationFrame(loop);
         return () => cancelAnimationFrame(rafId);
     }, [render]);
+
+    // ─── Math helpers ───
+    const lineIntersectsRect = useCallback((x1: number, y1: number, x2: number, y2: number, rx: number, ry: number, rw: number, rh: number) => {
+        // Line boundaries
+        const minX = Math.min(x1, x2), maxX = Math.max(x1, x2);
+        const minY = Math.min(y1, y2), maxY = Math.max(y1, y2);
+
+        // Quick bounds check
+        if (maxX < rx || minX > rx + rw || maxY < ry || minY > ry + rh) return false;
+
+        // Point in rect check
+        if ((x1 >= rx && x1 <= rx + rw && y1 >= ry && y1 <= ry + rh) ||
+            (x2 >= rx && x2 <= rx + rw && y2 >= ry && y2 <= ry + rh)) return true;
+
+        // Line intersection logic
+        const checkLine = (x3: number, y3: number, x4: number, y4: number) => {
+            const uA = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
+            const uB = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
+            return (uA >= 0 && uA <= 1 && uB >= 0 && uB <= 1);
+        };
+
+        return checkLine(rx, ry, rx + rw, ry) || // Top
+            checkLine(rx + rw, ry, rx + rw, ry + rh) || // Right
+            checkLine(rx, ry + rh, rx + rw, ry + rh) || // Bottom
+            checkLine(rx, ry, rx, ry + rh); // Left
+    }, []);
+
+    const getLineRectIntersections = useCallback((x1: number, y1: number, x2: number, y2: number, rx: number, ry: number, rw: number, rh: number) => {
+        const pts: { x: number, y: number }[] = [];
+        const checkLine = (x3: number, y3: number, x4: number, y4: number) => {
+            const denom = (y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1);
+            if (denom === 0) return;
+            const ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denom;
+            const ub = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / denom;
+            if (ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1) {
+                pts.push({ x: x1 + ua * (x2 - x1), y: y1 + ua * (y2 - y1) });
+            }
+        };
+        checkLine(rx, ry, rx + rw, ry); // Top
+        checkLine(rx + rw, ry, rx + rw, ry + rh); // Right
+        checkLine(rx, ry + rh, rx + rw, ry + rh); // Bottom
+        checkLine(rx, ry, rx, ry + rh); // Left
+        return pts;
+    }, []);
 
     // ─── Hit testing ───
     const hitTest = useCallback((wx: number, wy: number): { kind: string; id: string } | null => {
@@ -1043,6 +1259,79 @@ export function MapEditor({
             const nodeLat = mapCenter[0] + (snapped.y * 0.00001);
             const nodeLon = mapCenter[1] + (snapped.x * 0.00001);
 
+            // Collision Check with Buildings
+            if (linePoints.length > 0) {
+                const prevPt = linePoints[linePoints.length - 1];
+                let intersections: { x: number, y: number }[] = [];
+                for (const b of buildingElements) {
+                    if (lineIntersectsRect(prevPt.x, prevPt.y, snapped.x, snapped.y, b.x, b.y, b.w, b.h)) {
+                        intersections.push(...getLineRectIntersections(prevPt.x, prevPt.y, snapped.x, snapped.y, b.x, b.y, b.w, b.h));
+                    }
+                }
+                if (intersections.length > 0) {
+                    intersections.sort((a, b) => Math.hypot(a.x - prevPt.x, a.y - prevPt.y) - Math.hypot(b.x - prevPt.x, b.y - prevPt.y));
+                    const p1 = intersections[0];
+                    const p2 = intersections[intersections.length - 1];
+
+                    toast.info("Path cut at building boundary.");
+
+                    const createChoppedPath = async () => {
+                        try {
+                            const p1Lat = mapCenter[0] + (p1.y * 0.00001);
+                            const p1Lon = mapCenter[1] + (p1.x * 0.00001);
+                            const tempNode1 = await saveNavNode(slug, { latitude: p1Lat, longitude: p1Lon, node_type: "waypoint" } as any);
+                            setElPositions(prev => ({ ...prev, [tempNode1.id]: { x: p1.x, y: p1.y, w: 12, h: 12 } }));
+                            setNavNodes(prev => [...prev, tempNode1]);
+
+                            if (prevPt.id) {
+                                const weight1 = Math.round(haversineDistance(mapCenter[0] + (prevPt.y * 0.00001), mapCenter[1] + (prevPt.x * 0.00001), p1Lat, p1Lon)) || 5;
+                                const e1 = await saveNavEdge(slug, { from_node_id: prevPt.id, to_node_id: tempNode1.id, weight: weight1, edge_type: "walkway" });
+                                const e1r = await saveNavEdge(slug, { from_node_id: tempNode1.id, to_node_id: prevPt.id, weight: weight1, edge_type: "walkway" });
+                                setNavEdges(prev => [...prev, e1, e1r]);
+                            }
+
+                            let p2NodeId: string | undefined;
+                            if (Math.hypot(p1.x - p2.x, p1.y - p2.y) > 5) {
+                                const p2Lat = mapCenter[0] + (p2.y * 0.00001);
+                                const p2Lon = mapCenter[1] + (p2.x * 0.00001);
+                                const tempNode2 = await saveNavNode(slug, { latitude: p2Lat, longitude: p2Lon, node_type: "waypoint" } as any);
+                                setElPositions(prev => ({ ...prev, [tempNode2.id]: { x: p2.x, y: p2.y, w: 12, h: 12 } }));
+                                setNavNodes(prev => [...prev, tempNode2]);
+                                p2NodeId = tempNode2.id;
+                            }
+
+                            const saved = await saveNavNode(slug, { latitude: nodeLat, longitude: nodeLon, node_type: "waypoint" } as any);
+                            setElPositions(prev => ({ ...prev, [saved.id]: { x: snapped.x, y: snapped.y, w: 12, h: 12 } }));
+                            setNavNodes(prev => [...prev, saved]);
+
+                            if (p2NodeId) {
+                                const p2Lat = mapCenter[0] + (p2.y * 0.00001);
+                                const p2Lon = mapCenter[1] + (p2.x * 0.00001);
+                                const weight2 = Math.round(haversineDistance(p2Lat, p2Lon, nodeLat, nodeLon)) || 5;
+                                const e2 = await saveNavEdge(slug, { from_node_id: p2NodeId, to_node_id: saved.id, weight: weight2, edge_type: "walkway" });
+                                const e2r = await saveNavEdge(slug, { from_node_id: saved.id, to_node_id: p2NodeId, weight: weight2, edge_type: "walkway" });
+                                setNavEdges(prev => [...prev, e2, e2r]);
+                            }
+
+                            setLinePoints([{ id: saved.id, x: snapped.x, y: snapped.y }]);
+                            setDrawCurrent(snapped);
+                        } catch (err: any) {
+                            toast.error("Failed to generate cut path: " + err.message);
+                        }
+                    };
+                    createChoppedPath();
+                    return;
+                }
+            } else {
+                // First point can't be inside a building
+                for (const b of buildingElements) {
+                    if (snapped.x >= b.x && snapped.x <= b.x + b.w && snapped.y >= b.y && snapped.y <= b.y + b.h) {
+                        toast.error("Cannot start a path inside a building boundary here.");
+                        return;
+                    }
+                }
+            }
+
             setLinePoints((prev) => [...prev, { id: tempId, x: snapped.x, y: snapped.y }]);
             setDrawCurrent(snapped);
             setHasChanges(true);
@@ -1121,15 +1410,70 @@ export function MapEditor({
             setHasChanges(true);
         } else if (drawMode === "navedge") {
             const hit = hitTest(world.x, world.y);
-            if (hit?.kind === "navnode") {
+
+            const handleNodeSelection = async (nodeId: string) => {
                 if (!edgeStartNode) {
-                    setEdgeStartNode(hit.id);
+                    setEdgeStartNode(nodeId);
                     toast.info("Start node selected. Click another node to connect.");
-                } else if (edgeStartNode !== hit.id) {
+                } else if (edgeStartNode !== nodeId) {
                     // Create edge!
                     const startNode = navNodes.find((n) => n.id === edgeStartNode);
-                    const endNode = navNodes.find((n) => n.id === hit.id);
+                    const endNode = navNodes.find((n) => n.id === nodeId);
                     if (startNode && endNode) {
+                        // Collision Check for connected edge
+                        const sPos = elPositions[startNode.id];
+                        const ePos = elPositions[endNode.id];
+                        if (sPos && ePos) {
+                            let intersections: { x: number, y: number }[] = [];
+                            for (const b of buildingElements) {
+                                if (lineIntersectsRect(sPos.x, sPos.y, ePos.x, ePos.y, b.x, b.y, b.w, b.h)) {
+                                    intersections.push(...getLineRectIntersections(sPos.x, sPos.y, ePos.x, ePos.y, b.x, b.y, b.w, b.h));
+                                }
+                            }
+                            if (intersections.length > 0) {
+                                intersections.sort((a, b) => Math.hypot(a.x - sPos.x, a.y - sPos.y) - Math.hypot(b.x - sPos.x, b.y - sPos.y));
+                                const p1 = intersections[0];
+                                const p2 = intersections[intersections.length - 1];
+
+                                toast.info("Path cut at building boundary to prevent crossing.");
+                                setEdgeStartNode(null);
+
+                                const createChoppedEdges = async () => {
+                                    try {
+                                        const p1Lat = mapCenter[0] + (p1.y * 0.00001);
+                                        const p1Lon = mapCenter[1] + (p1.x * 0.00001);
+                                        const tempNode1 = await saveNavNode(slug, { latitude: p1Lat, longitude: p1Lon, node_type: "waypoint" } as any);
+                                        setElPositions(prev => ({ ...prev, [tempNode1.id]: { x: p1.x, y: p1.y, w: 12, h: 12 } }));
+                                        setNavNodes(prev => [...prev, tempNode1]);
+
+                                        const weight1 = Math.round(haversineDistance(startNode.latitude, startNode.longitude, p1Lat, p1Lon)) || 5;
+                                        const e1 = await saveNavEdge(slug, { from_node_id: startNode.id, to_node_id: tempNode1.id, weight: weight1, edge_type: "walkway" });
+                                        const e1r = await saveNavEdge(slug, { from_node_id: tempNode1.id, to_node_id: startNode.id, weight: weight1, edge_type: "walkway" });
+                                        setNavEdges(prev => [...prev, e1, e1r]);
+
+                                        if (Math.hypot(p1.x - p2.x, p1.y - p2.y) > 5) {
+                                            const p2Lat = mapCenter[0] + (p2.y * 0.00001);
+                                            const p2Lon = mapCenter[1] + (p2.x * 0.00001);
+                                            const tempNode2 = await saveNavNode(slug, { latitude: p2Lat, longitude: p2Lon, node_type: "waypoint" } as any);
+                                            setElPositions(prev => ({ ...prev, [tempNode2.id]: { x: p2.x, y: p2.y, w: 12, h: 12 } }));
+                                            setNavNodes(prev => [...prev, tempNode2]);
+
+                                            const weight2 = Math.round(haversineDistance(p2Lat, p2Lon, endNode.latitude, endNode.longitude)) || 5;
+                                            const e2 = await saveNavEdge(slug, { from_node_id: tempNode2.id, to_node_id: endNode.id, weight: weight2, edge_type: "walkway" });
+                                            const e2r = await saveNavEdge(slug, { from_node_id: endNode.id, to_node_id: tempNode2.id, weight: weight2, edge_type: "walkway" });
+                                            setNavEdges(prev => [...prev, e2, e2r]);
+                                        }
+
+                                        toast.success("Clipped path nodes generated successfully.");
+                                    } catch (err: any) {
+                                        toast.error("Failed to cut path: " + err.message);
+                                    }
+                                };
+                                createChoppedEdges();
+                                return;
+                            }
+                        }
+
                         const weight = Math.round(haversineDistance(
                             startNode.latitude, startNode.longitude,
                             endNode.latitude, endNode.longitude
@@ -1137,13 +1481,13 @@ export function MapEditor({
 
                         saveNavEdge(slug, {
                             from_node_id: edgeStartNode,
-                            to_node_id: hit.id,
+                            to_node_id: nodeId,
                             weight,
                             edge_type: "walkway",
                         }).then((newEdge) => {
                             setNavEdges((prev) => [...prev, newEdge]);
                             saveNavEdge(slug, {
-                                from_node_id: hit.id,
+                                from_node_id: nodeId,
                                 to_node_id: edgeStartNode!,
                                 weight,
                                 edge_type: "walkway",
@@ -1155,8 +1499,65 @@ export function MapEditor({
                             toast.error("Edge creation failed: " + err.message);
                         });
                     }
-                    setEdgeStartNode(null);
                 }
+                setEdgeStartNode(null);
+            };
+
+            const handleHitSelection = async () => {
+                if (!hit) return;
+
+                if (hit.kind === "navnode") {
+                    handleNodeSelection(hit.id);
+                } else if (hit.kind === "poi" || hit.kind === "building") {
+                    // Auto-create or find node for POI/Building
+                    const isPOI = hit.kind === "poi";
+                    const itemData = isPOI ? pois.find(p => p.id === hit.id) : buildings.find(b => b.id === hit.id);
+                    if (itemData) {
+                        // Check if node already exists for this building or exactly at this POI
+                        let existingNode = navNodes.find(n =>
+                            (isPOI && n.latitude === itemData.latitude && n.longitude === itemData.longitude) ||
+                            (!isPOI && n.building_id === itemData.id && n.node_type === "entrance")
+                        );
+
+                        if (existingNode) {
+                            handleNodeSelection(existingNode.id);
+                        } else {
+                            // Create a new node seamlessly
+                            toast.info("Creating a node for this location...");
+                            const pos = hit ? elPositions[hit.id] : undefined;
+                            const tempNode = await saveNavNode(slug, {
+                                latitude: itemData.latitude,
+                                longitude: itemData.longitude,
+                                node_type: isPOI ? "poi" : "entrance",
+                                label: itemData.name,
+                                building_id: (isPOI ? (itemData as any).building_id : itemData.id) || undefined,
+
+                                canvas_x: pos ? (pos.x + (isPOI ? 0 : pos.w / 2)) : undefined,
+                                canvas_y: pos ? (pos.y + (isPOI ? 0 : pos.h / 2)) : undefined,
+                            } as any).catch(err => {
+                                toast.error("Failed to auto-create node: " + err.message);
+                                return null;
+                            });
+
+                            if (tempNode) {
+                                setElPositions(prev => ({
+                                    ...prev,
+                                    [tempNode.id]: {
+                                        x: pos ? (pos.x + (isPOI ? 0 : pos.w / 2)) : 0,
+                                        y: pos ? (pos.y + (isPOI ? 0 : pos.h / 2)) : 0,
+                                        w: 12, h: 12
+                                    }
+                                }));
+                                setNavNodes(prev => [...prev, tempNode]);
+                                handleNodeSelection(tempNode.id);
+                            }
+                        }
+                    }
+                }
+            };
+
+            if (hit) {
+                handleHitSelection();
             }
         } else if (drawMode === "eraser") {
             const hit = hitTest(world.x, world.y);
@@ -1274,8 +1675,9 @@ export function MapEditor({
             setDrawCurrent(snapped);
         }
 
-        if (drawMode === "polygon" && polygonPoints.length > 0) {
+        if ((drawMode === "polygon" || drawMode === "boundary") && polygonPoints.length > 0) {
             setDrawCurrent(snapped);
+            return;
         }
 
         if (drawMode === "line" && linePoints.length > 0) {
@@ -1317,19 +1719,19 @@ export function MapEditor({
             const newSelectionIds: string[] = [];
             for (const b of buildings) {
                 const pos = elPositions[b.id];
-                if (pos && pos.x >= x && pos.y >= y && (pos.x + pos.w) <= (x + w) && (pos.y + pos.h) <= (y + h)) {
+                if (pos && pos.x <= x + w && pos.x + pos.w >= x && pos.y <= y + h && pos.y + pos.h >= y) {
                     newSelectionIds.push(b.id);
                 }
             }
             for (const p of pois) {
                 const pos = elPositions[p.id];
-                if (pos && pos.x >= x && pos.y >= y && (pos.x + 24) <= (x + w) && (pos.y + 24) <= (y + h)) {
+                if (pos && pos.x - 12 <= x + w && pos.x + 12 >= x && pos.y - 12 <= y + h && pos.y + 12 >= y) {
                     newSelectionIds.push(p.id);
                 }
             }
             for (const n of navNodes) {
                 const pos = elPositions[n.id];
-                if (pos && pos.x >= x && pos.y >= y && pos.x <= (x + w) && pos.y <= (y + h)) {
+                if (pos && pos.x - 6 <= x + w && pos.x + 6 >= x && pos.y - 6 <= y + h && pos.y + 6 >= y) {
                     newSelectionIds.push(n.id);
                 }
             }
@@ -1438,6 +1840,27 @@ export function MapEditor({
 
     // Double-click to finish polygon/line
     const handleDoubleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+        if (drawMode === "boundary" && polygonPoints.length >= 3) {
+            pushUndo();
+            const pointsToSave = [...polygonPoints];
+
+            saveMapStyle(slug, {
+                id: mapStyle?.id,
+                center_lat: mapCenter[0] || 11.2274,
+                center_lng: mapCenter[1] || 75.9104,
+                boundary_polygon: JSON.stringify(pointsToSave)
+            }).then(() => {
+                toast.success("Campus Boundary saved!");
+                setBoundaryPolygon(pointsToSave);
+            }).catch(err => {
+                toast.error("Failed to save boundary: " + err.message);
+            });
+
+            setPolygonPoints([]);
+            setDrawMode("select");
+            return;
+        }
+
         if (drawMode === "polygon" && polygonPoints.length >= 3) {
             // Create building from polygon
             const bounds = polygonPoints.reduce(
@@ -1504,6 +1927,31 @@ export function MapEditor({
             pushUndo();
         }
     }, [drawMode, polygonPoints, linePoints, mapCenter, buildings.length, slug, haversineDistance, pushUndo]);
+    // ─── Clean Map ───
+    const handleCleanMap = useCallback(async () => {
+        pushUndo();
+        setSaving(true);
+        try {
+            const promises: Promise<any>[] = [];
+            for (const b of buildings) promises.push(deleteBuildingAction(slug, b.id));
+            for (const p of pois) promises.push(deletePOIAction(slug, p.id));
+            for (const n of navNodes) promises.push(deleteNavNodeAction(slug, n.id));
+            await Promise.allSettled(promises);
+
+            setBuildings([]);
+            setPOIs([]);
+            setNavNodes([]);
+            setNavEdges([]);
+            setElPositions({});
+            setSelectedItem(null);
+            setMarqueeSelectionIds([]);
+            toast.success("Map cleaned successfully.");
+        } catch (err: any) {
+            toast.error("Failed to clean map: " + err.message);
+        } finally {
+            setSaving(false);
+        }
+    }, [buildings, pois, navNodes, slug, pushUndo]);
 
     // ─── Delete handler (declared before keyboard shortcuts to avoid forward ref) ───
     const handleDeleteItem = useCallback(async (overrideItem?: any) => {
@@ -1723,9 +2171,16 @@ export function MapEditor({
         if (!selectedItem) return;
         setSaving(true);
 
+        const anchorX = lonToX(mapCenter[1]);
+        const anchorY = latToY(mapCenter[0]);
+
         try {
             if (selectedItem.type === "building") {
                 const data = selectedItem.data;
+                const pos = (data.id && elPositions[data.id]) || { x: data.cx ?? 100, y: data.cy ?? 100, w: data.cw ?? 200, h: data.ch ?? 120 };
+                const trueLon = xToLon(pos.x + anchorX);
+                const trueLat = yToLat(pos.y + anchorY);
+
                 if (!data.name.trim()) {
                     toast.error("Building name is required");
                     setSaving(false);
@@ -1738,8 +2193,8 @@ export function MapEditor({
                     description: data.description || undefined,
                     category: data.category,
                     floors: data.floors,
-                    latitude: data.latitude,
-                    longitude: data.longitude,
+                    latitude: trueLat,
+                    longitude: trueLon,
                     geo_polygon: data.geo_polygon,
                     icon: data.icon,
                     color: data.color,
@@ -1764,10 +2219,14 @@ export function MapEditor({
                         },
                     }));
                 }
-                setSelectedItem({ type: "building", data: { ...data, id: result.id } });
+                setSelectedItem({ type: "building", data: { ...data, id: result.id, latitude: trueLat, longitude: trueLon } });
                 toast.success("Building saved!");
             } else if (selectedItem.type === "poi") {
                 const data = selectedItem.data;
+                const pos = (data.id && elPositions[data.id]) || { x: data.cx ?? 1500, y: data.cy ?? 100, w: 20, h: 20 };
+                const trueLon = xToLon(pos.x + anchorX);
+                const trueLat = yToLat(pos.y + anchorY);
+
                 if (!data.name.trim()) {
                     toast.error("POI name is required");
                     setSaving(false);
@@ -1779,8 +2238,8 @@ export function MapEditor({
                     category: data.category,
                     description: data.description || undefined,
                     icon: data.icon,
-                    latitude: data.latitude,
-                    longitude: data.longitude,
+                    latitude: trueLat,
+                    longitude: trueLon,
                     building_id: data.building_id || undefined,
                 });
 
@@ -1799,14 +2258,18 @@ export function MapEditor({
                         },
                     }));
                 }
-                setSelectedItem({ type: "poi", data: { ...data, id: result.id } });
+                setSelectedItem({ type: "poi", data: { ...data, id: result.id, latitude: trueLat, longitude: trueLon } });
                 toast.success("POI saved!");
             } else if (selectedItem.type === "navnode") {
                 const data = selectedItem.data;
+                const pos = (data.id && elPositions[data.id]) || { x: data.cx ?? 100, y: data.cy ?? 800, w: 12, h: 12 };
+                const trueLon = xToLon(pos.x + anchorX);
+                const trueLat = yToLat(pos.y + anchorY);
+
                 const result = await saveNavNode(slug, {
                     id: data.id,
-                    latitude: data.latitude,
-                    longitude: data.longitude,
+                    latitude: trueLat,
+                    longitude: trueLon,
                     node_type: data.node_type,
                     label: data.label || undefined,
                     building_id: data.building_id || undefined,
@@ -1821,7 +2284,7 @@ export function MapEditor({
                         [result.id]: { x: data.cx ?? 100, y: data.cy ?? 800, w: 12, h: 12 },
                     }));
                 }
-                setSelectedItem({ type: "navnode", data: { ...data, id: result.id } });
+                setSelectedItem({ type: "navnode", data: { ...data, id: result.id, latitude: trueLat, longitude: trueLon } });
                 toast.success("Nav node saved!");
             }
             setHasChanges(false);
@@ -1918,10 +2381,35 @@ export function MapEditor({
 
                 {/* Canvas */}
                 <div ref={containerRef} className="absolute inset-0">
+                    <MapGeoSearch
+                        onLocationFound={(lat, lon) => {
+                            // The base map found a new central location,
+                            // we need to convert it into a canvas offset relative to anchor
+                            const anchorX = lonToX(mapCenter[1]);
+                            const anchorY = latToY(mapCenter[0]);
+                            const canvasX = lonToX(lon) - anchorX;
+                            const canvasY = latToY(lat) - anchorY;
+
+                            setPanOffset({
+                                x: canvasSize.w / 2 - canvasX * zoom,
+                                y: canvasSize.h / 2 - canvasY * zoom
+                            });
+                        }}
+                    />
+                    {showBaseMap && (
+                        <OSMBaseLayer
+                            panOffset={panOffset}
+                            zoom={zoom}
+                            canvasWidth={canvasSize.w}
+                            canvasHeight={canvasSize.h}
+                            anchorLat={mapCenter[0]}
+                            anchorLon={mapCenter[1]}
+                        />
+                    )}
                     <canvas
                         ref={canvasRef}
                         className="w-full h-full"
-                        style={{ cursor, touchAction: "none" }}
+                        style={{ cursor, touchAction: "none", position: "relative", zIndex: 1 }}
                         onMouseDown={handleMouseDown}
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUp}
@@ -2031,6 +2519,8 @@ export function MapEditor({
                     onSave={handleSaveItem}
                     saving={saving}
                     isAutoSaving={isAutoSaving}
+                    showBaseMap={showBaseMap}
+                    onToggleBaseMap={() => setShowBaseMap(!showBaseMap)}
                     showNavGraph={showNavGraph}
                     onToggleNavGraph={() => setShowNavGraph(!showNavGraph)}
                     hasChanges={hasChanges}
@@ -2041,6 +2531,7 @@ export function MapEditor({
                     onHelp={() => window.open(`/campus/${slug}/admin/map-guide`, '_blank')}
                     isFullscreen={isFullscreen}
                     onToggleFullscreen={handleToggleFullscreen}
+                    onCleanMap={handleCleanMap}
                 />
 
                 {/* Property Panel */}

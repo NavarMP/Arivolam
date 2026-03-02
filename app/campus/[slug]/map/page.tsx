@@ -31,6 +31,7 @@ export default async function MapPage({
             id, name, short_name, description, category, floors,
             latitude, longitude, geo_polygon, icon, color,
             operating_hours, sort_order, label_visible_zoom, show_polygon,
+            canvas_x, canvas_y, canvas_w, canvas_h,
             campus_rooms (
                 id, building_id, name, room_number, room_type, capacity,
                 description, latitude, longitude
@@ -43,19 +44,27 @@ export default async function MapPage({
     // Fetch POIs
     const { data: pois } = await supabase
         .from("campus_pois")
-        .select("id, name, category, description, icon, latitude, longitude, building_id")
+        .select("id, name, category, description, icon, latitude, longitude, building_id, canvas_x, canvas_y")
         .eq("institution_id", institution.id)
         .eq("is_active", true);
 
     // Fetch navigation graph
     const { data: navNodes } = await supabase
         .from("campus_nav_nodes")
-        .select("id, latitude, longitude, node_type, label, building_id")
+        .select("id, latitude, longitude, node_type, label, building_id, canvas_x, canvas_y")
         .eq("institution_id", institution.id);
 
     const { data: navEdges } = await supabase
         .from("campus_nav_edges")
         .select("id, from_node_id, to_node_id, weight");
+
+    const { data: mapStyle } = await supabase
+        .from("campus_map_styles")
+        .select("*")
+        .eq("institution_id", institution.id)
+        .eq("is_active", true)
+        .limit(1)
+        .maybeSingle();
 
     // Transform buildings to include rooms as nested property
     const buildingsWithRooms = buildings?.map((b: any) => ({
@@ -71,6 +80,7 @@ export default async function MapPage({
                 navNodes={navNodes || undefined}
                 navEdges={navEdges || undefined}
                 slug={slug}
+                mapStyle={mapStyle || undefined}
             />
         </div>
     );
