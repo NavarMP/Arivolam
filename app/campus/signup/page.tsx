@@ -284,7 +284,7 @@ export default function CampusSignupPage() {
                                             <div className="space-y-2">
                                                 <Label className="text-sm font-medium ml-1">I am signing up as a...</Label>
                                                 <div className="flex p-1 bg-muted/50 rounded-xl">
-                                                    {['student', 'staff', 'parent'].map((r) => (
+                                                    {['student', 'faculty', 'parent'].map((r) => (
                                                         <button
                                                             key={r}
                                                             type="button"
@@ -365,10 +365,10 @@ export default function CampusSignupPage() {
                                                 </div>
                                             )}
 
-                                            {role === "staff" && (
+                                            {role === "faculty" && (
                                                 <div className="space-y-4 pt-4 mt-2 border-t border-border/50">
                                                     <div className="p-3 mb-2 rounded-xl bg-emerald-500/5 border border-emerald-500/20 text-xs text-emerald-600 dark:text-emerald-400">
-                                                        Staff members will be verified by the campus admin upon request submission.
+                                                        Faculty members will be verified by the campus admin upon request submission.
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-3">
                                                         <div className="space-y-2">

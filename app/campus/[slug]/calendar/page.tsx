@@ -1,104 +1,131 @@
-"use client";
+import { createClient } from "@/utils/supabase/server";
+import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { CalendarRange, Clock, MapPin } from "lucide-react";
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Clock, MapPin } from "lucide-react";
-import { cn } from "@/lib/utils";
+const EVENT_TYPE_CONFIG: Record<string, { label: string; color: string }> = {
+    general: { label: "General", color: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300" },
+    exam: { label: "Exam", color: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400" },
+    holiday: { label: "Holiday", color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" },
+    meeting: { label: "Meeting", color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400" },
+    seminar: { label: "Seminar", color: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400" },
+    workshop: { label: "Workshop", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400" },
+    sports: { label: "Sports", color: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400" },
+    cultural: { label: "Cultural", color: "bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-400" },
+    other: { label: "Other", color: "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300" },
+};
 
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const EVENTS = [
-    { id: 1, title: "Software Engineering Lecture", type: "class", time: "09:30 AM", room: "Hall A", date: "2023-10-25" },
-    { id: 2, title: "Web Programming Lab", type: "lab", time: "10:30 AM", room: "Lab 2", date: "2023-10-25" },
-    { id: 3, title: "Project Discussion", type: "meeting", time: "02:00 PM", room: "Conf Room", date: "2023-10-26" },
-    { id: 4, title: "Internal Exam", type: "exam", time: "10:00 AM", room: "Exam Hall", date: "2023-10-27" },
-];
+export default async function CalendarPage({ params }: { params: Promise<{ slug: string }> }) {
+    const { slug } = await params;
+    const supabase = await createClient();
 
-export default function CampusCalendarPage() {
-    const [currentDate, setCurrentDate] = useState(new Date());
+    const { data: institution } = await supabase
+        .from("institutions")
+        .select("id, name")
+        .eq("slug", slug)
+        .single();
 
-    const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
-    const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
+    if (!institution) return <div className="p-8 text-center">Institution not found</div>;
 
-    const prevMonth = () => {
-        setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1));
+    const sc = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+        process.env.SUPABASE_SERVICE_ROLE_KEY || ""
+    );
+
+    const { data: events } = await sc
+        .from("calendar_events")
+        .select("*, department:departments(id, name, code)")
+        .eq("institution_id", institution.id)
+        .eq("is_active", true)
+        .order("start_date", { ascending: true });
+
+    const now = new Date().toISOString();
+    const upcoming = (events || []).filter((e: any) => e.start_date >= now);
+    const past = (events || []).filter((e: any) => e.start_date < now);
+
+    const formatDate = (d: string) => {
+        try {
+            return new Date(d).toLocaleDateString("en-US", {
+                weekday: "short", month: "short", day: "numeric", year: "numeric",
+                hour: "2-digit", minute: "2-digit",
+            });
+        } catch { return d; }
     };
 
-    const nextMonth = () => {
-        setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1));
+    const renderEventList = (eventList: any[], emptyMessage: string) => {
+        if (eventList.length === 0) {
+            return (
+                <Card className="border-dashed">
+                    <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                        <CalendarRange className="h-10 w-10 text-muted-foreground/30 mb-3" />
+                        <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+                    </CardContent>
+                </Card>
+            );
+        }
+        return (
+            <div className="space-y-3">
+                {eventList.map((ev: any) => {
+                    const typeConfig = EVENT_TYPE_CONFIG[ev.event_type] || EVENT_TYPE_CONFIG.other;
+                    return (
+                        <Card key={ev.id} className="hover:shadow-md transition-all">
+                            <CardContent className="flex items-start gap-4 py-4 px-5">
+                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
+                                    style={{ backgroundColor: (ev.color || "#6366f1") + "18", color: ev.color || "#6366f1" }}>
+                                    <CalendarRange className="h-5 w-5" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="font-semibold flex items-center gap-2">
+                                        {ev.title}
+                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${typeConfig.color}`}>{typeConfig.label}</span>
+                                    </h3>
+                                    {ev.description && <p className="text-sm text-muted-foreground mt-1">{ev.description}</p>}
+                                    <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {formatDate(ev.start_date)}</span>
+                                        {ev.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {ev.location}</span>}
+                                        {ev.department ? (
+                                            <Badge variant="outline" className="text-[10px]">{ev.department.code}</Badge>
+                                        ) : (
+                                            <Badge variant="secondary" className="text-[10px]">Institution</Badge>
+                                        )}
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    );
+                })}
+            </div>
+        );
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Calendar</h1>
-                    <p className="text-muted-foreground">Schedule and Events</p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" onClick={prevMonth}><ChevronLeft className="h-4 w-4" /></Button>
-                    <span className="min-w-[120px] text-center font-medium">
-                        {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                    </span>
-                    <Button variant="outline" size="icon" onClick={nextMonth}><ChevronRight className="h-4 w-4" /></Button>
-                </div>
+        <div className="space-y-6 animate-in fade-in duration-500">
+            <div>
+                <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+                    <CalendarRange className="h-8 w-8 text-rose-500" /> Campus Calendar
+                </h1>
+                <p className="text-muted-foreground mt-1">{institution.name} — Events, Exams, Holidays & More</p>
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-3">
-                <Card className="lg:col-span-2">
-                    <CardHeader>
-                        <CardTitle>Monthly View</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-7 gap-2 text-center text-sm font-medium text-muted-foreground">
-                            {DAYS.map(day => <div key={day} className="py-2">{day}</div>)}
-                        </div>
-                        <div className="grid grid-cols-7 gap-2">
-                            {Array.from({ length: firstDay }).map((_, i) => (
-                                <div key={`empty-${i}`} className="aspect-square" />
-                            ))}
-                            {Array.from({ length: daysInMonth }).map((_, i) => {
-                                const day = i + 1;
-                                const isToday = new Date().toDateString() === new Date(currentDate.getFullYear(), currentDate.getMonth(), day).toDateString();
-                                return (
-                                    <div key={day} className={cn(
-                                        "relative flex aspect-square flex-col items-center justify-center rounded-lg border bg-card/50 p-2 transition-colors hover:bg-muted/50",
-                                        isToday && "border-primary bg-primary/5 font-bold text-primary"
-                                    )}>
-                                        <span>{day}</span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </CardContent>
-                </Card>
+            <div className="space-y-6">
+                <div className="space-y-3">
+                    <h2 className="text-lg font-semibold flex items-center gap-2">
+                        Upcoming Events
+                        <Badge variant="secondary">{upcoming.length}</Badge>
+                    </h2>
+                    {renderEventList(upcoming, "No upcoming events")}
+                </div>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Upcoming Events</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            {EVENTS.map(event => (
-                                <div key={event.id} className="flex items-start gap-4 rounded-lg border p-3">
-                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                                        <div className="text-center text-xs font-bold leading-none">
-                                            <div className="text-[10px] uppercase">OCT</div>
-                                            <div className="text-sm">25</div>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <h4 className="font-semibold">{event.title}</h4>
-                                        <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-                                            <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {event.time}</span>
-                                            <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {event.room}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
+                {past.length > 0 && (
+                    <div className="space-y-3">
+                        <h2 className="text-lg font-semibold flex items-center gap-2">
+                            Past Events
+                            <Badge variant="outline">{past.length}</Badge>
+                        </h2>
+                        {renderEventList(past.slice(0, 20), "No past events")}
+                    </div>
+                )}
             </div>
         </div>
     );

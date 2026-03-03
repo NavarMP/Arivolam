@@ -134,7 +134,7 @@ export default async function CampusParentPage({
                 <Card className="col-span-3 border-orange-100 dark:border-orange-900/50 shadow-sm">
                     <CardHeader>
                         <CardTitle>School Communications</CardTitle>
-                        <CardDescription>Messages from teachers and admins.</CardDescription>
+                        <CardDescription>Messages from faculties and admins.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="flex items-center justify-center py-8 text-center">

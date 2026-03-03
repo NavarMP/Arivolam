@@ -62,7 +62,7 @@ export async function getAdminDashboardData(slug: string) {
 
     const [
         { count: studentCount },
-        { count: staffCount },
+        { count: facultyCount },
         { data: pendingEnrollments }
     ] = await Promise.all([
         serviceClient
@@ -74,7 +74,7 @@ export async function getAdminDashboardData(slug: string) {
             .from("institution_members")
             .select("*", { count: "exact", head: true })
             .eq("institution_id", auth.institutionId!)
-            .eq("role", "staff"),
+            .eq("role", "faculty"),
         serviceClient
             .from("enrollments")
             .select("id, full_name, email, register_number, admission_number, role, department, created_at")
@@ -85,7 +85,7 @@ export async function getAdminDashboardData(slug: string) {
 
     return {
         studentCount: studentCount || 0,
-        staffCount: staffCount || 0,
+        facultyCount: facultyCount || 0,
         pendingEnrollments: pendingEnrollments || []
     };
 }
@@ -121,7 +121,7 @@ export async function getCampusUsersData(slug: string) {
 
 export async function updateUserRole(
     userId: string,
-    newRole: "student" | "teacher" | "parent" | "admin",
+    newRole: "student" | "faculty" | "parent" | "admin",
     institutionSlug: string
 ) {
     const auth = await verifyInstitutionAdmin(institutionSlug);

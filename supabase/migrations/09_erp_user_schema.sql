@@ -1,6 +1,6 @@
 -- =====================================================
 -- 09_erp_user_schema.sql
--- Isolated table for ERP Users (students, staff, admin, etc.)
+-- Isolated table for ERP Users (students, faculty, admin, etc.)
 -- to decouple from the Social Arivolam Profiles completely.
 -- =====================================================
 
@@ -22,7 +22,7 @@ create table if not exists public.erp_users (
   avatar_url text,
   
   -- Role & Access
-  role text default 'student' check (role in ('student', 'alumni', 'staff', 'admin', 'parent')),
+  role text default 'student' check (role in ('student', 'alumni', 'faculty', 'admin', 'parent')),
   is_active boolean default true,
   
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,

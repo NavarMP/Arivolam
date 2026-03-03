@@ -86,7 +86,7 @@ begin
   on conflict (institution_id, email) do nothing;
 
   insert into public.enrollments (institution_id, email, role, employee_id, username, is_claimed)
-  values (sias_id, 'teacher@sias.edu', 'staff', 'EMP001', 'teacher_sias', false)
+  values (sias_id, 'faculty@sias.edu', 'faculty', 'EMP001', 'faculty_sias', false)
   on conflict (institution_id, email) do nothing;
 
   insert into public.enrollments (institution_id, email, role, username, is_claimed)

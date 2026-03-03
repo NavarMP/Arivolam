@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, GraduationCap, Settings, Bell, BookOpen, Map } from "lucide-react";
+import { Users, GraduationCap, Settings, Bell, BookOpen, Map, Building2, CalendarDays, Clock, CalendarRange, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { PendingWidget } from "./components/pending-widget";
@@ -31,7 +31,7 @@ export default async function CampusAdminPage({
         return <div className="p-8 text-center text-destructive">{e.message}</div>;
     }
 
-    const { studentCount, staffCount, pendingEnrollments } = dashboardData;
+    const { studentCount, facultyCount, pendingEnrollments } = dashboardData;
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -55,12 +55,12 @@ export default async function CampusAdminPage({
 
                 <Card className="bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/20 dark:to-background border-emerald-100 dark:border-emerald-900/50 shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Total Staff</CardTitle>
+                        <CardTitle className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Total Faculty</CardTitle>
                         <Users className="h-4 w-4 text-emerald-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-emerald-900 dark:text-emerald-100">{staffCount || 0}</div>
-                        <p className="text-xs text-emerald-600/70 dark:text-emerald-300/70">Teachers and admins</p>
+                        <div className="text-2xl font-bold text-emerald-900 dark:text-emerald-100">{facultyCount || 0}</div>
+                        <p className="text-xs text-emerald-600/70 dark:text-emerald-300/70">Faculties and admins</p>
                     </CardContent>
                 </Card>
 
@@ -96,23 +96,71 @@ export default async function CampusAdminPage({
                     <PendingWidget initialPendings={pendingEnrollments || []} slug={slug} />
                 </div>
 
-                {/* Secondary Actions / Future widgets */}
+                {/* Academic Management Quick Links */}
                 <div className="space-y-6">
                     <Card className="border-border/50 shadow-sm">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <BookOpen className="h-5 w-5 text-blue-500" />
-                                Modules & Apps
+                                Academic Management
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="flex flex-col gap-2">
-                                <Button variant="outline" className="justify-start w-full" disabled>
-                                    Timetable Management (Soon)
+                                <Button variant="outline" className="justify-start w-full gap-2" asChild>
+                                    <Link href={`/campus/${slug}/admin/departments`}>
+                                        <Building2 className="h-4 w-4" />
+                                        Departments
+                                    </Link>
                                 </Button>
-                                <Button variant="outline" className="justify-start w-full" disabled>
-                                    Library System (Soon)
+                                <Button variant="outline" className="justify-start w-full gap-2" asChild>
+                                    <Link href={`/campus/${slug}/admin/semesters`}>
+                                        <CalendarDays className="h-4 w-4" />
+                                        Semesters
+                                    </Link>
                                 </Button>
+                                <Button variant="outline" className="justify-start w-full gap-2" asChild>
+                                    <Link href={`/campus/${slug}/admin/classes`}>
+                                        <GraduationCap className="h-4 w-4" />
+                                        Classes
+                                    </Link>
+                                </Button>
+                                <Button variant="outline" className="justify-start w-full gap-2" asChild>
+                                    <Link href={`/campus/${slug}/admin/periods`}>
+                                        <Clock className="h-4 w-4" />
+                                        Periods / Hours
+                                    </Link>
+                                </Button>
+                                <Button variant="outline" className="justify-start w-full gap-2" asChild>
+                                    <Link href={`/campus/${slug}/admin/subjects`}>
+                                        <BookOpen className="h-4 w-4" />
+                                        Subjects & Assignments
+                                    </Link>
+                                </Button>
+                                <Button variant="outline" className="justify-start w-full gap-2" asChild>
+                                    <Link href={`/campus/${slug}/admin/students`}>
+                                        <UserPlus className="h-4 w-4" />
+                                        Students
+                                    </Link>
+                                </Button>
+                                <Button variant="outline" className="justify-start w-full gap-2" asChild>
+                                    <Link href={`/campus/${slug}/admin/events`}>
+                                        <CalendarRange className="h-4 w-4" />
+                                        Events
+                                    </Link>
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card className="border-border/50 shadow-sm">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Map className="h-5 w-5 text-emerald-500" />
+                                Campus Tools
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex flex-col gap-2">
                                 <Button variant="outline" className="justify-start w-full gap-2" asChild>
                                     <Link href={`/campus/${slug}/admin/map-editor`}>
                                         <Map className="h-4 w-4" />

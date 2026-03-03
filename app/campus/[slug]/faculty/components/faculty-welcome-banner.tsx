@@ -3,11 +3,11 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Sparkles, MapPin, Briefcase } from "lucide-react";
 
-export function TeacherWelcomeBanner({
-    teacher,
+export function FacultyWelcomeBanner({
+    faculty,
     institutionName,
 }: {
-    teacher: any;
+    faculty: any;
     institutionName: string;
 }) {
     const hour = new Date().getHours();
@@ -15,9 +15,9 @@ export function TeacherWelcomeBanner({
     if (hour < 12) greeting = "Good morning";
     else if (hour < 17) greeting = "Good afternoon";
 
-    const displayName = teacher.user_metadata?.full_name || teacher.email?.split("@")[0] || "Staff";
-    const department = teacher.department || "General Administration";
-    const roleLabel = teacher.role === 'admin' ? 'Administrator' : 'Faculty Member';
+    const displayName = faculty.user_metadata?.full_name || faculty.email?.split("@")[0] || "Faculty";
+    const department = faculty.department || "General Administration";
+    const roleLabel = faculty.role === 'admin' ? 'Administrator' : 'Faculty Member';
 
     return (
         <Card className="overflow-hidden border-0 bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700 text-white shadow-md">
@@ -27,7 +27,7 @@ export function TeacherWelcomeBanner({
                         <div className="space-y-4 max-w-2xl">
                             <div className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-sm font-medium backdrop-blur-md">
                                 <Sparkles className="h-4 w-4 text-emerald-100" />
-                                <span className="text-white">Staff Portal</span>
+                                <span className="text-white">Faculty Portal</span>
                             </div>
 
                             <div>

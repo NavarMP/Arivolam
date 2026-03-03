@@ -22,6 +22,8 @@ import {
     MessageSquare,
     Menu,
     ChevronRight,
+    Clock,
+    CalendarCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -71,17 +73,19 @@ function getSidebarNav(slug: string, role: string) {
             { label: "Timetable", href: `${base}/student/timetable`, icon: Calendar },
             { label: "Assignments", href: `${base}/student/assignments`, icon: ClipboardList },
             { label: "Grades", href: `${base}/student/grades`, icon: BarChart3 },
-            { label: "Announcements", href: `${base}/student/announcements`, icon: Bell },
+            { label: "My Attendance", href: `${base}/student/attendance`, icon: CalendarCheck },
+            { label: "My Marks", href: `${base}/student/marks`, icon: FileText },
+            { label: "Academics", href: `${base}/academics`, icon: BookOpen },
+            { label: "Calendar", href: `${base}/calendar`, icon: Calendar },
             { label: "Campus Map", href: `${base}/map`, icon: Compass },
             { label: "Profile", href: `${base}/profile`, icon: User },
         ],
-        staff: [
-            { label: "Dashboard", href: `${base}/teacher`, icon: Home },
-            { label: "My Classes", href: `${base}/teacher/classes`, icon: GraduationCap },
-            { label: "Students", href: `${base}/teacher/students`, icon: Users },
-            { label: "Assignments", href: `${base}/teacher/assignments`, icon: ClipboardList },
-            { label: "Attendance", href: `${base}/teacher/attendance`, icon: FileText },
-            { label: "Announcements", href: `${base}/teacher/announcements`, icon: MessageSquare },
+        faculty: [
+            { label: "Dashboard", href: `${base}/faculty`, icon: Home },
+            { label: "Attendance", href: `${base}/faculty/attendance`, icon: CalendarCheck },
+            { label: "Marks Entry", href: `${base}/faculty/marks`, icon: FileText },
+            { label: "Academics", href: `${base}/academics`, icon: BookOpen },
+            { label: "Calendar", href: `${base}/calendar`, icon: Calendar },
             { label: "Campus Map", href: `${base}/map`, icon: Compass },
             { label: "Profile", href: `${base}/profile`, icon: User },
         ],
@@ -97,11 +101,13 @@ function getSidebarNav(slug: string, role: string) {
         admin: [
             { label: "Dashboard", href: `${base}/admin`, icon: Home },
             { label: "User Management", href: `${base}/admin/users`, icon: Users },
+            { label: "Semesters", href: `${base}/admin/semesters`, icon: Calendar },
             { label: "Departments", href: `${base}/admin/departments`, icon: GraduationCap },
-            { label: "Modules", href: `${base}/admin/modules`, icon: LayoutGrid },
-            { label: "Announcements", href: `${base}/admin/announcements`, icon: MessageSquare },
-            { label: "Reports", href: `${base}/admin/reports`, icon: BarChart3 },
-            { label: "Settings", href: `${base}/admin/settings`, icon: Settings },
+            { label: "Classes", href: `${base}/admin/classes`, icon: Users },
+            { label: "Periods", href: `${base}/admin/periods`, icon: Clock },
+            { label: "Subjects", href: `${base}/admin/subjects`, icon: BookOpen },
+            { label: "Students", href: `${base}/admin/students`, icon: GraduationCap },
+            { label: "Events", href: `${base}/admin/events`, icon: Calendar },
             { label: "Campus Map", href: `${base}/map`, icon: Compass },
             { label: "Profile", href: `${base}/profile`, icon: User },
         ],
@@ -115,7 +121,7 @@ function getDockItems(slug: string, role: string): DockItem[] {
     const base = `/campus/${slug}`;
 
     const items: DockItem[] = [
-        { title: "Dashboard", icon: Home, href: role === "admin" ? `${base}/admin` : role === "staff" ? `${base}/teacher` : role === "parent" ? `${base}/parent` : `${base}/student` },
+        { title: "Dashboard", icon: Home, href: role === "admin" ? `${base}/admin` : role === "faculty" ? `${base}/faculty` : role === "parent" ? `${base}/parent` : `${base}/student` },
         { title: "Campus Map", icon: Compass, href: `${base}/map` },
         { title: "Academics", icon: BookOpen, href: `${base}/academics` },
         { title: "Calendar", icon: Calendar, href: `${base}/calendar` },
@@ -123,8 +129,8 @@ function getDockItems(slug: string, role: string): DockItem[] {
 
     if (role === "admin") {
         items.push({ title: "Admin", icon: ShieldCheck, href: `${base}/admin` });
-    } else if (role === "staff") {
-        items.push({ title: "Classes", icon: GraduationCap, href: `${base}/teacher` });
+    } else if (role === "faculty") {
+        items.push({ title: "Classes", icon: GraduationCap, href: `${base}/faculty` });
     } else if (role === "parent") {
         items.push({ title: "My Child", icon: Users, href: `${base}/parent` });
     }
@@ -146,7 +152,7 @@ export function CampusLayout({ children, institution, userRole, slug, campusCont
             {sidebarNav.map((item) => {
                 const isActive =
                     pathname === item.href ||
-                    (item.href !== `/campus/${slug}` && item.href !== `/campus/${slug}/student` && item.href !== `/campus/${slug}/teacher` && item.href !== `/campus/${slug}/parent` && item.href !== `/campus/${slug}/admin` && pathname.startsWith(item.href));
+                    (item.href !== `/campus/${slug}` && item.href !== `/campus/${slug}/student` && item.href !== `/campus/${slug}/faculty` && item.href !== `/campus/${slug}/parent` && item.href !== `/campus/${slug}/admin` && pathname.startsWith(item.href));
                 const isExactActive = pathname === item.href;
 
                 return (
@@ -173,7 +179,7 @@ export function CampusLayout({ children, institution, userRole, slug, campusCont
 
     const roleColors: Record<string, string> = {
         student: "text-indigo-600 bg-indigo-500/10",
-        staff: "text-emerald-600 bg-emerald-500/10",
+        faculty: "text-emerald-600 bg-emerald-500/10",
         parent: "text-orange-600 bg-orange-500/10",
         admin: "text-rose-600 bg-rose-500/10",
     };

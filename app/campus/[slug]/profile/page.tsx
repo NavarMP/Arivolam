@@ -81,7 +81,8 @@ export default async function CampusProfilePage({
     // Determine Role Label
     let roleLabel = "Member";
     if (roleMatch === "student") roleLabel = "Student";
-    if (roleMatch === "staff") roleLabel = "Faculty/Staff";
+    if (roleMatch === "faculty") roleLabel = "Faculty";
+    if (roleMatch === "parent") roleLabel = "Parent";
     if (roleMatch === "admin") roleLabel = "Administrator";
 
     return (

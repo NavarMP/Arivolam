@@ -35,7 +35,7 @@ from public.institutions where slug = 'sias'
 on conflict (institution_id, email) do nothing;
 
 insert into public.enrollments (institution_id, email, role, employee_id, username, is_claimed)
-select id, 'teacher@sias.edu', 'staff', 'EMP001', 'teacher_sias', false
+select id, 'faculty@sias.edu', 'faculty', 'EMP001', 'faculty_sias', false
 from public.institutions where slug = 'sias'
 on conflict (institution_id, email) do nothing;
 

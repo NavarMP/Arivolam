@@ -2,7 +2,7 @@
 -- Helper Script: Seed Enrollments for Arivolam Roles
 -- =================================================================
 -- Run this script in your Supabase SQL Editor to pre-create
--- spots for Admin, Student, Teacher, and Parent roles.
+-- spots for Admin, Student, Faculty, and Parent roles.
 --
 -- After running this, simply Sign Up at /auth/signup with the
 -- corresponding email to instantly get access to that role.
@@ -31,10 +31,10 @@ begin
   values (sias_id, 'student@sias.edu', 'student', 'ADM2024001', 'student_sias', false)
   on conflict (institution_id, email) do nothing;
 
-  -- 4. Create TEACHER (Staff) enrollment
-  -- Login as: teacher@sias.edu
+  -- 4. Create faculty enrollment
+  -- Login as: faculty@sias.edu
   insert into public.enrollments (institution_id, email, role, employee_id, username, is_claimed)
-  values (sias_id, 'teacher@sias.edu', 'staff', 'EMP001', 'teacher_sias', false)
+  values (sias_id, 'faculty@sias.edu', 'faculty', 'EMP001', 'faculty_sias', false)
   on conflict (institution_id, email) do nothing;
 
   -- 5. Create PARENT enrollment

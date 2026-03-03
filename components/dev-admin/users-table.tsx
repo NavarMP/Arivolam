@@ -64,7 +64,7 @@ export function UsersTable({ users }: UsersTableProps) {
         return matchesSearch && matchesRole;
     });
 
-    const roleOptions = ["all", "dev_admin", "admin", "teacher", "student", "parent"];
+    const roleOptions = ["all", "dev_admin", "admin", "faculty", "student", "parent"];
 
     const handleToggleDevAdmin = (user: UserProfile) => {
         const action = user.is_dev_admin ? "Remove dev admin from" : "Promote to dev admin:";
@@ -266,7 +266,7 @@ export function UsersTable({ users }: UsersTableProps) {
                                                                     {m.institution?.short_name || m.institution?.name}
                                                                 </DropdownMenuSubTrigger>
                                                                 <DropdownMenuSubContent>
-                                                                    {["admin", "teacher", "student", "parent"].map((role) => (
+                                                                    {["admin", "faculty", "student", "parent"].map((role) => (
                                                                         <DropdownMenuItem
                                                                             key={role}
                                                                             disabled={m.role === role}
