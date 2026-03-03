@@ -52,9 +52,7 @@ const subTypes = [
     { id: "student", label: "Student", icon: GraduationCap },
     { id: "professor", label: "Professor", icon: BookOpen },
     { id: "researcher", label: "Researcher", icon: FlaskConical },
-    { id: "alumni", label: "Alumni", icon: UserCheck },
     { id: "visitor", label: "Visitor", icon: Eye },
-    { id: "parent", label: "Parent", icon: Users },
 ];
 
 export default function OnboardingPage() {

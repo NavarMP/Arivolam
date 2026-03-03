@@ -11,7 +11,7 @@ alter table public.arivolam_profiles
 -- ─── Add sub_type for personal accounts ───
 alter table public.arivolam_profiles
   add column if not exists sub_type text default 'student'
-    check (sub_type in ('student', 'professor', 'researcher', 'alumni', 'visitor', 'parent', null));
+    check (sub_type in ('student', 'professor', 'researcher', 'visitor', null));
 
 -- ─── Add enhanced profile fields ───
 alter table public.arivolam_profiles

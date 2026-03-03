@@ -70,7 +70,7 @@ create table if not exists public.institution_members (
   user_id uuid references auth.users on delete cascade not null,
   institution_id uuid references public.institutions on delete cascade not null,
   
-  role text not null default 'student' check (role in ('admin', 'faculty', 'student', 'parent')),
+  role text not null default 'student' check (role in ('admin', 'faculty', 'student')),
   
   -- Institution-specific identifiers
   register_number text,
@@ -104,7 +104,7 @@ create table if not exists public.enrollments (
   username text, -- institution-specific username
   password_hash text, -- bcrypt hash for institution login
   
-  role text not null default 'student' check (role in ('admin', 'faculty', 'student', 'parent')),
+  role text not null default 'student' check (role in ('admin', 'faculty', 'student')),
   department text,
   
   -- If already linked to a user

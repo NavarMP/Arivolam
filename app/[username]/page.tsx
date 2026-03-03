@@ -83,9 +83,7 @@ export default async function PublicProfilePage({ params }: ProfilePageProps) {
         student: "Student",
         professor: "Professor",
         researcher: "Researcher",
-        alumni: "Alumni",
         visitor: "Visitor",
-        parent: "Parent",
     };
 
     return (

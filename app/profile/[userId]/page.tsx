@@ -105,9 +105,7 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
         student: "Student",
         professor: "Professor",
         researcher: "Researcher",
-        alumni: "Alumni",
         visitor: "Visitor",
-        parent: "Parent",
     };
 
     return (

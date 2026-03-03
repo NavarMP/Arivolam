@@ -67,7 +67,7 @@ const howItWorks = [
     {
         icon: <Users className="h-6 w-6" />,
         title: "Enroll",
-        description: "Students, faculty, and parents sign up and get approved by the admin.",
+        description: "Students and faculties sign up and get approved by the admin.",
         color: "text-emerald-500",
         bg: "bg-emerald-500/10",
     },

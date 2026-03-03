@@ -11,7 +11,6 @@ import { useTransition } from "react";
 const roles = [
     { id: "student", label: "Student", icon: GraduationCap, color: "text-blue-500", bg: "bg-blue-500/10" },
     { id: "faculty", label: "Faculty", icon: School, color: "text-green-500", bg: "bg-green-500/10" },
-    { id: "parent", label: "Parent", icon: User, color: "text-orange-500", bg: "bg-orange-500/10" },
     { id: "admin", label: "Admin", icon: ShieldCheck, color: "text-red-500", bg: "bg-red-500/10" },
 ];
 

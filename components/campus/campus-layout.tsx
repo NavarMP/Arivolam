@@ -89,15 +89,6 @@ function getSidebarNav(slug: string, role: string) {
             { label: "Campus Map", href: `${base}/map`, icon: Compass },
             { label: "Profile", href: `${base}/profile`, icon: User },
         ],
-        parent: [
-            { label: "Dashboard", href: `${base}/parent`, icon: Home },
-            { label: "My Child", href: `${base}/parent/child`, icon: Users },
-            { label: "Attendance", href: `${base}/parent/attendance`, icon: FileText },
-            { label: "Grades", href: `${base}/parent/grades`, icon: BarChart3 },
-            { label: "Announcements", href: `${base}/parent/announcements`, icon: Bell },
-            { label: "Campus Map", href: `${base}/map`, icon: Compass },
-            { label: "Profile", href: `${base}/profile`, icon: User },
-        ],
         admin: [
             { label: "Dashboard", href: `${base}/admin`, icon: Home },
             { label: "User Management", href: `${base}/admin/users`, icon: Users },
@@ -121,7 +112,7 @@ function getDockItems(slug: string, role: string): DockItem[] {
     const base = `/campus/${slug}`;
 
     const items: DockItem[] = [
-        { title: "Dashboard", icon: Home, href: role === "admin" ? `${base}/admin` : role === "faculty" ? `${base}/faculty` : role === "parent" ? `${base}/parent` : `${base}/student` },
+        { title: "Dashboard", icon: Home, href: role === "admin" ? `${base}/admin` : role === "faculty" ? `${base}/faculty` : `${base}/student` },
         { title: "Campus Map", icon: Compass, href: `${base}/map` },
         { title: "Academics", icon: BookOpen, href: `${base}/academics` },
         { title: "Calendar", icon: Calendar, href: `${base}/calendar` },
@@ -131,8 +122,6 @@ function getDockItems(slug: string, role: string): DockItem[] {
         items.push({ title: "Admin", icon: ShieldCheck, href: `${base}/admin` });
     } else if (role === "faculty") {
         items.push({ title: "Classes", icon: GraduationCap, href: `${base}/faculty` });
-    } else if (role === "parent") {
-        items.push({ title: "My Child", icon: Users, href: `${base}/parent` });
     }
 
     items.push({ title: "Profile", icon: User, href: `${base}/profile` });
@@ -152,7 +141,7 @@ export function CampusLayout({ children, institution, userRole, slug, campusCont
             {sidebarNav.map((item) => {
                 const isActive =
                     pathname === item.href ||
-                    (item.href !== `/campus/${slug}` && item.href !== `/campus/${slug}/student` && item.href !== `/campus/${slug}/faculty` && item.href !== `/campus/${slug}/parent` && item.href !== `/campus/${slug}/admin` && pathname.startsWith(item.href));
+                    (item.href !== `/campus/${slug}` && item.href !== `/campus/${slug}/student` && item.href !== `/campus/${slug}/faculty` && item.href !== `/campus/${slug}/admin` && pathname.startsWith(item.href));
                 const isExactActive = pathname === item.href;
 
                 return (
@@ -180,7 +169,6 @@ export function CampusLayout({ children, institution, userRole, slug, campusCont
     const roleColors: Record<string, string> = {
         student: "text-indigo-600 bg-indigo-500/10",
         faculty: "text-emerald-600 bg-emerald-500/10",
-        parent: "text-orange-600 bg-orange-500/10",
         admin: "text-rose-600 bg-rose-500/10",
     };
     const roleColorClass = roleColors[userRole] || "text-primary bg-primary/10";

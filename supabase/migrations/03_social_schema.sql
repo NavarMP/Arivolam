@@ -50,7 +50,6 @@ create table if not exists public.comments (
   id uuid default gen_random_uuid() primary key,
   post_id uuid references public.posts on delete cascade not null,
   author_id uuid references auth.users on delete cascade not null,
-  parent_id uuid references public.comments on delete cascade, -- for nested replies
   
   content text not null,
   

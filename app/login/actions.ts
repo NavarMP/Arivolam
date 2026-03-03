@@ -28,8 +28,6 @@ export async function login(formData: FormData) {
         redirect('/admin')
     } else if (role === 'faculty') {
         redirect('/faculty')
-    } else if (role === 'parent') {
-        redirect('/parent')
     } else {
         redirect('/student') // Default to student
     }

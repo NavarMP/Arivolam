@@ -284,7 +284,7 @@ export default function CampusSignupPage() {
                                             <div className="space-y-2">
                                                 <Label className="text-sm font-medium ml-1">I am signing up as a...</Label>
                                                 <div className="flex p-1 bg-muted/50 rounded-xl">
-                                                    {['student', 'faculty', 'parent'].map((r) => (
+                                                    {['student', 'faculty'].map((r) => (
                                                         <button
                                                             key={r}
                                                             type="button"
@@ -382,17 +382,6 @@ export default function CampusSignupPage() {
                                                     </div>
                                                 </div>
                                             )}
-
-                                            {role === "parent" && (
-                                                <div className="space-y-4 pt-4 mt-2 border-t border-border/50">
-                                                    <div className="p-3 mb-2 rounded-xl bg-blue-500/5 border border-blue-500/20 text-xs text-blue-600 dark:text-blue-400 flex gap-2">
-                                                        <User className="h-4 w-4 shrink-0" />
-                                                        <p>Parents do not need an ID number. Once your account is approved, you will be able to link it to your child's student dashboard.</p>
-                                                    </div>
-                                                </div>
-                                            )}
-
-
 
                                             {/* Password */}
                                             <div className="space-y-2">

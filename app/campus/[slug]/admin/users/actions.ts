@@ -121,7 +121,7 @@ export async function getCampusUsersData(slug: string) {
 
 export async function updateUserRole(
     userId: string,
-    newRole: "student" | "faculty" | "parent" | "admin",
+    newRole: "student" | "faculty" | "admin",
     institutionSlug: string
 ) {
     const auth = await verifyInstitutionAdmin(institutionSlug);

@@ -52,8 +52,6 @@ export default async function CampusRouterPage({
         redirect(`/campus/${slug}/admin`);
     } else if (userRole === "faculty") {
         redirect(`/campus/${slug}/faculty`);
-    } else if (userRole === "parent") {
-        redirect(`/campus/${slug}/parent`);
     } else {
         redirect(`/campus/${slug}/student`);
     }

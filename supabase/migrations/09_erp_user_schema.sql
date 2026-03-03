@@ -22,7 +22,7 @@ create table if not exists public.erp_users (
   avatar_url text,
   
   -- Role & Access
-  role text default 'student' check (role in ('student', 'alumni', 'faculty', 'admin', 'parent')),
+  role text default 'student' check (role in ('student', 'alumni', 'faculty', 'admin')),
   is_active boolean default true,
   
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
