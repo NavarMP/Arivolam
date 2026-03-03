@@ -11,6 +11,15 @@ export default async function CampusSlugLayout({
     params: Promise<{ slug: string }>;
 }) {
     const { slug } = await params;
+    console.log("LAYOUT HIT WITH SLUG:", slug);
+
+    // Reserved static route names under /campus/ — let them pass through
+    // without auth so their own route handlers can serve them
+    const RESERVED_SLUGS = ["explore", "login", "signup", "create", "guide"];
+    if (RESERVED_SLUGS.includes(slug)) {
+        return <>{children}</>;
+    }
+
     const supabase = await createClient();
 
     // Get current Supabase Auth user (may be null for ERP-only users)

@@ -32,6 +32,8 @@ import {
     saveNavEdge,
     deleteNavEdge as deleteNavEdgeAction,
     saveMapStyle,
+    saveRoom as saveRoomAction,
+    deleteRoom as deleteRoomAction,
 } from "@/app/campus/[slug]/admin/map-editor/actions";
 import {
     saveFloorPlan,
@@ -117,6 +119,7 @@ interface MapEditorProps {
     pois: MapPOI[];
     navNodes: MapNavNode[];
     navEdges: MapNavEdge[];
+    rooms?: any[];
     mapCenter?: [number, number];
     slug: string;
     mapStyle?: any;
@@ -269,6 +272,7 @@ export function MapEditor({
     pois: initialPOIs,
     navNodes: initialNavNodes,
     navEdges: initialNavEdges,
+    rooms: initialRooms = [],
     mapCenter = [11.2274, 75.9104],
     slug,
     mapStyle,
@@ -284,6 +288,7 @@ export function MapEditor({
     const [pois, setPOIs] = useState(initialPOIs);
     const [navNodes, setNavNodes] = useState(initialNavNodes);
     const [navEdges, setNavEdges] = useState(initialNavEdges);
+    const [editorRooms, setEditorRooms] = useState(initialRooms);
     const [boundaryPolygon, setBoundaryPolygon] = useState<{ x: number; y: number }[]>(() => {
         if (mapStyle?.boundary_polygon) {
             try {
@@ -2548,6 +2553,29 @@ export function MapEditor({
                         }
                     }}
                     saving={saving}
+                    rooms={editorRooms}
+                    onSaveRoom={async (room) => {
+                        try {
+                            const saved = await saveRoomAction(slug, room);
+                            if (room.id) {
+                                setEditorRooms(prev => prev.map(r => r.id === room.id ? saved : r));
+                            } else {
+                                setEditorRooms(prev => [...prev, saved]);
+                            }
+                            toast.success(room.id ? "Room updated" : "Room added");
+                        } catch (err: any) {
+                            toast.error("Failed to save room: " + err.message);
+                        }
+                    }}
+                    onDeleteRoom={async (roomId) => {
+                        try {
+                            await deleteRoomAction(slug, roomId);
+                            setEditorRooms(prev => prev.filter(r => r.id !== roomId));
+                            toast.success("Room deleted");
+                        } catch (err: any) {
+                            toast.error("Failed to delete room: " + err.message);
+                        }
+                    }}
                 />
             </div>
 

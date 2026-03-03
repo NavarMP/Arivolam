@@ -15,7 +15,7 @@ import {
     Library, FlaskConical, BedDouble, Trophy, Utensils, ChevronUp,
     Locate, Compass, Star, Flag, ZoomIn, ZoomOut, Maximize2,
     ArrowRight, ArrowUpRight, ArrowDownRight, CornerDownRight, Footprints,
-    Minimize, Globe
+    Minimize, Globe, DoorOpen
 } from "lucide-react";
 import { FloorPlanViewer, type FloorPlan } from "../campus/floor-plan";
 import { getFloorPlans } from "@/app/campus/[slug]/admin/map-editor/floor-plan-actions";
@@ -44,7 +44,7 @@ interface Building {
 interface Room {
     id: string; building_id: string; name: string; room_number: string | null;
     room_type: string; capacity: number | null; description: string | null;
-    latitude: number | null; longitude: number | null;
+    latitude: number | null; longitude: number | null; floor_number?: number;
 }
 interface POI {
     id: string; name: string; category: string; description: string | null;
@@ -174,10 +174,10 @@ const THEME_COLORS = {
 };
 
 // ─── Props ───
-interface CampusMapProps { buildings?: Building[]; pois?: POI[]; navNodes?: NavNode[]; navEdges?: NavEdge[]; slug?: string; mapStyle?: any; }
+interface CampusMapProps { buildings?: Building[]; pois?: POI[]; navNodes?: NavNode[]; navEdges?: NavEdge[]; slug?: string; mapStyle?: any; initialDestination?: string; }
 
 // ─── Main Component ───
-export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: propNavNodes, navEdges: propNavEdges, mapStyle }: CampusMapProps) {
+export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: propNavNodes, navEdges: propNavEdges, mapStyle, initialDestination }: CampusMapProps) {
     const buildings = propBuildings ?? DEFAULT_BUILDINGS;
     const pois = propPois ?? DEFAULT_POIS;
     const navNodes = propNavNodes ?? DEFAULT_NAV_NODES;
@@ -499,6 +499,48 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
     }, [navNodes, navEdges, userPosition, generateDirections, buildings, pois, manualStartPt, boundaryPolygon, gpsToCanvas]);
 
     const clearRoute = () => { setRoutePath(null); setRouteInfo(null); setNavSteps([]); setShowNavPanel(false); setNavDestination(null); };
+
+    // ─── Deep-link: auto-navigate to initialDestination ───
+    const initialDestHandled = useRef(false);
+    useEffect(() => {
+        if (!initialDestination || initialDestHandled.current) return;
+        initialDestHandled.current = true;
+        const dest = initialDestination.toLowerCase().trim();
+        // Try matching by room number first
+        for (const b of buildings) {
+            if (b.rooms) {
+                const room = b.rooms.find(r =>
+                    r.room_number?.toLowerCase() === dest ||
+                    r.name.toLowerCase().includes(dest)
+                );
+                if (room) {
+                    setSelectedBuilding(b);
+                    setTimeout(() => navigateToBuilding(b), 500);
+                    return;
+                }
+            }
+        }
+        // Try matching by building name or short_name
+        const matchedBuilding = buildings.find(b =>
+            b.name.toLowerCase().includes(dest) ||
+            (b.short_name || "").toLowerCase().includes(dest)
+        );
+        if (matchedBuilding) {
+            setSelectedBuilding(matchedBuilding);
+            setTimeout(() => navigateToBuilding(matchedBuilding), 500);
+            return;
+        }
+        // Try matching by POI name
+        const matchedPoi = pois.find(p => p.name.toLowerCase().includes(dest));
+        if (matchedPoi) {
+            const poiBuilding = matchedPoi.building_id ? buildings.find(b => b.id === matchedPoi.building_id) : null;
+            if (poiBuilding) {
+                setSelectedBuilding(poiBuilding);
+                setTimeout(() => navigateToBuilding(poiBuilding), 500);
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initialDestination]);
 
 
 
@@ -942,20 +984,22 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
                 </div>
             </div>
 
-            {/* Category filters */}
-            <div className="absolute left-3 right-16 top-[52px] z-[1000] overflow-x-auto md:left-4 md:right-auto md:top-[72px] md:w-80">
-                <div className="flex gap-1 pb-1 md:gap-1.5">
-                    {CATEGORIES.map((cat) => {
-                        const Icon = cat.icon;
-                        const isActive = selectedCategory === cat.key;
-                        return (
-                            <button key={cat.key} onClick={() => { setSelectedCategory(cat.key); clearRoute(); setSelectedBuilding(null); }}
-                                className={`flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all shadow-sm md:gap-1.5 md:px-3 md:py-1.5 md:text-xs ${isActive ? "bg-primary text-primary-foreground" : "bg-background/90 text-foreground backdrop-blur-sm border hover:bg-muted"}`}>
-                                <Icon className="h-3 w-3 md:h-3.5 md:w-3.5" />{cat.label}
-                            </button>
-                        );
-                    })}
-                </div>
+            {/* Category filters — positioned below search with proper spacing */}
+            <div className="absolute left-3 right-16 z-[999] overflow-x-auto md:left-4 md:right-auto md:w-80" style={{ top: showSearch && searchQuery.length > 0 ? undefined : '52px' }}>
+                {(!showSearch || searchQuery.length === 0) && (
+                    <div className="flex gap-1 pb-1 md:gap-1.5 pt-1">
+                        {CATEGORIES.map((cat) => {
+                            const Icon = cat.icon;
+                            const isActive = selectedCategory === cat.key;
+                            return (
+                                <button key={cat.key} onClick={() => { setSelectedCategory(cat.key); clearRoute(); setSelectedBuilding(null); }}
+                                    className={`flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all shadow-sm md:gap-1.5 md:px-3 md:py-1.5 md:text-xs ${isActive ? "bg-primary text-primary-foreground" : "bg-background/90 text-foreground backdrop-blur-sm border hover:bg-muted"}`}>
+                                    <Icon className="h-3 w-3 md:h-3.5 md:w-3.5" />{cat.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
 
             {/* Right controls: zoom + locate */}
@@ -1178,26 +1222,68 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
                                         {loadingFloorPlans ? "Loading..." : "Floor Plans"}
                                     </Button>
                                 </div>
-                                {selectedBuilding.rooms && selectedBuilding.rooms.length > 0 && (
-                                    <div>
-                                        <h3 className="text-sm font-semibold mb-2">Rooms & Facilities</h3>
-                                        <div className="space-y-2">
-                                            {selectedBuilding.rooms.map((room) => (
-                                                <div key={room.id} className="rounded-lg border p-3 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
-                                                    onClick={() => navigateToBuilding(selectedBuilding)}>
-                                                    <div className="flex items-center justify-between">
-                                                        <p className="text-sm font-medium">{room.name}</p>
-                                                        <div className="flex items-center gap-1.5">
-                                                            {room.room_number && <Badge variant="secondary" className="text-[10px]">{room.room_number}</Badge>}
-                                                            <Navigation className="h-3 w-3 text-muted-foreground" />
+                                {selectedBuilding.rooms && selectedBuilding.rooms.length > 0 && (() => {
+                                    // Group rooms by floor
+                                    const floorGroups = new Map<number, Room[]>();
+                                    selectedBuilding.rooms.forEach(room => {
+                                        const f = room.floor_number ?? 0;
+                                        if (!floorGroups.has(f)) floorGroups.set(f, []);
+                                        floorGroups.get(f)!.push(room);
+                                    });
+                                    const sortedFloors = [...floorGroups.entries()].sort((a, b) => a[0] - b[0]);
+
+                                    return (
+                                        <div>
+                                            <h3 className="text-sm font-semibold mb-3 flex items-center gap-1.5">
+                                                <DoorOpen className="h-4 w-4 text-primary" />
+                                                Rooms & Facilities
+                                                <Badge variant="secondary" className="text-[10px] ml-auto">{selectedBuilding.rooms.length}</Badge>
+                                            </h3>
+                                            <div className="space-y-3">
+                                                {sortedFloors.map(([floor, floorRooms]) => (
+                                                    <div key={floor}>
+                                                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-1">
+                                                            {floor === 0 ? "Ground Floor" : `Floor ${floor}`}
+                                                        </p>
+                                                        <div className="space-y-1.5">
+                                                            {floorRooms.map((room) => (
+                                                                <div key={room.id} className="rounded-lg border p-2.5 bg-muted/20 hover:bg-muted/40 transition-colors group">
+                                                                    <div className="flex items-center justify-between gap-2">
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <div className="flex items-center gap-1.5">
+                                                                                {room.room_number && (
+                                                                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono shrink-0">
+                                                                                        {room.room_number}
+                                                                                    </Badge>
+                                                                                )}
+                                                                                <p className="text-sm font-medium truncate">{room.name}</p>
+                                                                            </div>
+                                                                            <p className="text-[11px] text-muted-foreground capitalize mt-0.5">
+                                                                                {room.room_type.replace("_", " ")}{room.capacity ? ` · ${room.capacity} seats` : ""}
+                                                                            </p>
+                                                                        </div>
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="h-7 w-7 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                navigateToBuilding(selectedBuilding);
+                                                                            }}
+                                                                            title={`Navigate to ${room.name}`}
+                                                                        >
+                                                                            <Navigation className="h-3.5 w-3.5 text-primary" />
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
                                                         </div>
                                                     </div>
-                                                    <p className="text-xs text-muted-foreground capitalize mt-0.5">{room.room_type.replace("_", " ")}{room.capacity && ` • ${room.capacity} seats`}</p>
-                                                </div>
-                                            ))}
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
+                                    );
+                                })()}
                             </div>
                         </ScrollArea>
                     </motion.div>

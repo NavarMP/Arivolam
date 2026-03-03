@@ -80,6 +80,7 @@ export default async function MapEditorPage({
                 pois={mapData.pois}
                 navNodes={mapData.navNodes}
                 navEdges={mapData.navEdges}
+                rooms={mapData.rooms}
                 mapCenter={mapCenter}
                 slug={slug}
                 mapStyle={mapData.mapStyle}

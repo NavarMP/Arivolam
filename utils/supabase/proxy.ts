@@ -71,7 +71,7 @@ export async function updateSession(request: NextRequest) {
     // ─── Campus route protection ───
     if (pathname.startsWith('/campus/')) {
         // Public campus routes that don't require auth
-        const campusPublicRoutes = ['/campus/login', '/campus/signup', '/campus/create']
+        const campusPublicRoutes = ['/campus/login', '/campus/signup', '/campus/create', '/campus/explore', '/campus/guide']
         const isCampusPublic = campusPublicRoutes.some(route =>
             pathname === route || pathname.startsWith(`${route}/`)
         )

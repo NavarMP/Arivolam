@@ -15,6 +15,7 @@ import {
     ArrowRight,
     UserPlus,
     LogIn,
+    BookOpen,
     CheckCircle2,
     Users,
     Sparkles,
@@ -130,7 +131,7 @@ export default function CampusLandingPage() {
                         </p>
 
                         {/* CTA Buttons */}
-                        <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
+                        <div className="flex flex-col sm:flex-row flex-wrap justify-center items-center gap-4">
                             <Link href="/campus/login">
                                 <Button size="lg" className="w-full sm:w-auto gap-2 group text-base h-12 px-8 shadow-lg shadow-primary/25">
                                     <LogIn className="h-5 w-5 group-hover:scale-110 transition-transform" />
@@ -141,6 +142,12 @@ export default function CampusLandingPage() {
                                 <Button size="lg" variant="outline" className="w-full sm:w-auto gap-2 group text-base h-12 px-8">
                                     <UserPlus className="h-5 w-5 group-hover:scale-110 transition-transform" />
                                     Sign Up
+                                </Button>
+                            </Link>
+                            <Link href="/campus/guide">
+                                <Button size="lg" variant="secondary" className="w-full sm:w-auto gap-2 group text-base h-12 px-8">
+                                    <BookOpen className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                                    How to Use Guide
                                 </Button>
                             </Link>
                         </div>

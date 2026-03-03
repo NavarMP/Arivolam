@@ -198,6 +198,7 @@ export async function saveRoom(slug: string, room: {
     room_type: string;
     capacity?: number;
     description?: string;
+    floor_number?: number;
     latitude?: number;
     longitude?: number;
 }) {
@@ -210,6 +211,7 @@ export async function saveRoom(slug: string, room: {
         room_type: room.room_type,
         capacity: room.capacity || null,
         description: room.description || null,
+        floor_number: room.floor_number ?? 0,
         latitude: room.latitude || null,
         longitude: room.longitude || null,
         is_active: true,
@@ -435,7 +437,12 @@ export async function getMapEditorData(slug: string) {
             .select("*"),
         supabase
             .from("campus_rooms")
-            .select("*"),
+            .select("*")
+            .in("building_id", (await supabase
+                .from("campus_buildings")
+                .select("id")
+                .eq("institution_id", institutionId)
+            ).data?.map((b: any) => b.id) || []),
         supabase
             .from("campus_map_styles")
             .select("*")
