@@ -510,3 +510,103 @@ export async function getStudentEnrollments(slug: string) {
     if (error) throw new Error(error.message);
     return data || [];
 }
+
+// =====================================================
+// TIMETABLE
+// =====================================================
+
+export async function getTimetableEntries(slug: string, classId: string) {
+    const auth = await verifyInstitutionAdmin(slug);
+    if (auth.error) throw new Error(auth.error);
+    const sc = getServiceClient();
+
+    // Check if class belongs to this institution
+    const { data: cls } = await sc
+        .from("classes")
+        .select("department:departments(institution_id)")
+        .eq("id", classId)
+        .single();
+
+    if (!cls || (cls.department as any)?.institution_id !== auth.institutionId) {
+        throw new Error("Invalid class");
+    }
+
+    const { data, error } = await sc
+        .from("timetable_entries")
+        .select(`
+            *,
+            subject:subjects(id, name, code, subject_type),
+            period:periods(id, name, start_time, end_time, is_break),
+            faculty_subject:faculty_subjects(
+                id, 
+                faculty:enrollments!faculty_subjects_enrollment_id_fkey(id, full_name)
+            )
+        `)
+        .eq("class_id", classId);
+
+    if (error) throw new Error(error.message);
+    return data || [];
+}
+
+export async function saveTimetableEntry(
+    slug: string,
+    formData: {
+        class_id: string;
+        subject_id: string;
+        period_id: string;
+        day_of_week: number;
+        faculty_subject_id?: string;
+        room?: string;
+    }
+) {
+    const auth = await verifyInstitutionAdmin(slug);
+    if (auth.error) return { error: auth.error };
+
+    const sc = getServiceClient();
+
+    // Verify class belongs to institution
+    const { data: cls } = await sc
+        .from("classes")
+        .select("department:departments(institution_id)")
+        .eq("id", formData.class_id)
+        .single();
+
+    if (!cls || (cls.department as any)?.institution_id !== auth.institutionId) {
+        return { error: "Invalid class" };
+    }
+
+    const { error } = await sc.from("timetable_entries").upsert({
+        class_id: formData.class_id,
+        subject_id: formData.subject_id,
+        period_id: formData.period_id,
+        day_of_week: formData.day_of_week,
+        faculty_subject_id: formData.faculty_subject_id || null,
+        room: formData.room || null,
+    }, { onConflict: "class_id, period_id, day_of_week" });
+
+    if (error) return { error: error.message };
+    revalidatePath(`/campus/${slug}/admin/timetable`);
+    return { success: true };
+}
+
+export async function deleteTimetableEntry(slug: string, id: string) {
+    const auth = await verifyInstitutionAdmin(slug);
+    if (auth.error) return { error: auth.error };
+    const sc = getServiceClient();
+
+    // Add extra safety: verify the entry belongs to a class in this institution
+    const { data: entry } = await sc
+        .from("timetable_entries")
+        .select("class:classes(department:departments(institution_id))")
+        .eq("id", id)
+        .single();
+
+    if (!entry || (entry.class as any)?.department?.institution_id !== auth.institutionId) {
+        return { error: "Unauthorized or not found" };
+    }
+
+    const { error } = await sc.from("timetable_entries").delete().eq("id", id);
+    if (error) return { error: error.message };
+    revalidatePath(`/campus/${slug}/admin/timetable`);
+    return { success: true };
+}

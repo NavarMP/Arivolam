@@ -98,6 +98,7 @@ function getSidebarNav(slug: string, role: string) {
             { label: "Periods", href: `${base}/admin/periods`, icon: Clock },
             { label: "Subjects", href: `${base}/admin/subjects`, icon: BookOpen },
             { label: "Students", href: `${base}/admin/students`, icon: GraduationCap },
+            { label: "Timetable", href: `${base}/admin/timetable`, icon: Calendar },
             { label: "Events", href: `${base}/admin/events`, icon: Calendar },
             { label: "Campus Map", href: `${base}/map`, icon: Compass },
             { label: "Profile", href: `${base}/profile`, icon: User },

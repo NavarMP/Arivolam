@@ -149,3 +149,87 @@ export async function getMyMarks(slug: string) {
     // Only return published exam marks
     return (data || []).filter((m: any) => m.exam?.is_published);
 }
+
+// ─── Get My Timetable ───
+export async function getMyTimetable(slug: string) {
+    const auth = await resolveStudentEnrollment(slug);
+    if (auth.error) throw new Error(auth.error);
+    const sc = getServiceClient();
+
+    // Get student's class first
+    const classInfo = await getMyClassInfo(slug);
+    if (!classInfo || !classInfo.class) return [];
+
+    const { data, error } = await sc
+        .from("timetable_entries")
+        .select(`
+            *,
+            subject:subjects(id, name, code, subject_type),
+            period:periods(id, name, start_time, end_time, is_break),
+            faculty_subject:faculty_subjects(
+                id, 
+                faculty:enrollments!faculty_subjects_enrollment_id_fkey(id, full_name)
+            )
+        `)
+        .eq("class_id", (classInfo.class as any).id);
+
+    if (error) throw new Error(error.message);
+    return data || [];
+}
+
+// ─── Assignments ───
+export async function getMyAssignmentsWithSubmissions(slug: string) {
+    const auth = await resolveStudentEnrollment(slug);
+    if (auth.error) throw new Error(auth.error);
+    const sc = getServiceClient();
+
+    const classInfo = await getMyClassInfo(slug);
+    if (!classInfo || !classInfo.class) return [];
+
+    // Fetch assignments
+    const { data: assignments, error: aError } = await sc
+        .from("assignments")
+        .select(`
+            id, title, description, max_marks, due_date, created_at, is_published,
+            subject:subjects(name, code),
+            creator:enrollments!assignments_created_by_fkey(full_name)
+        `)
+        .eq("class_id", (classInfo.class as any).id)
+        .eq("is_published", true)
+        .order("due_date", { ascending: true });
+
+    if (aError) return [];
+
+    // Fetch ONLY this student's submissions
+    const { data: submissions, error: sError } = await sc
+        .from("assignment_submissions")
+        .select("*")
+        .eq("student_enrollment_id", auth.enrollmentId!)
+        .in("assignment_id", (assignments || [{ id: "" }]).map((a: any) => a.id));
+
+    if (sError) return [];
+
+    // Map them together
+    return (assignments || []).map((assignment: any) => ({
+        ...assignment,
+        my_submission: submissions?.find((s: any) => s.assignment_id === assignment.id) || null
+    }));
+}
+
+export async function submitAssignment(slug: string, assignmentId: string, content: string, fileUrl?: string) {
+    const auth = await resolveStudentEnrollment(slug);
+    if (auth.error) throw new Error(auth.error);
+    const sc = getServiceClient();
+
+    const { error } = await sc.from("assignment_submissions").upsert({
+        assignment_id: assignmentId,
+        student_enrollment_id: auth.enrollmentId!,
+        content: content,
+        file_url: fileUrl || null,
+        status: "submitted",
+        submission_date: new Date().toISOString()
+    }, { onConflict: "assignment_id, student_enrollment_id" });
+
+    if (error) throw new Error(error.message);
+    return { success: true };
+}
