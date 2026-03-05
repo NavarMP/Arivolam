@@ -21,7 +21,7 @@ export async function GET(request: Request) {
         // Limit search results to 10 for performance
         const { data: institutions, error } = await supabase
             .from("institutions")
-            .select("id, name, slug, logo_url")
+            .select("id, name, slug, logo_url, short_name, description, city, state, cover_url")
             .ilike("name", `%${query}%`)
             .limit(10);
 

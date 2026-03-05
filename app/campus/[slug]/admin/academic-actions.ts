@@ -90,6 +90,73 @@ export async function getDepartments(slug: string) {
     return data || [];
 }
 
+export async function getDepartmentStats(slug: string) {
+    const auth = await verifyInstitutionAdmin(slug);
+    if (auth.error) throw new Error(auth.error);
+    const sc = getServiceClient();
+
+    // Get departments
+    const { data: depts } = await sc
+        .from("departments")
+        .select("id")
+        .eq("institution_id", auth.institutionId!);
+
+    if (!depts || depts.length === 0) return {};
+
+    const deptIds = depts.map(d => d.id);
+
+    // Get classes per department
+    const { data: classes } = await sc
+        .from("classes")
+        .select("id, department_id")
+        .in("department_id", deptIds);
+
+    // Get subjects per department
+    const { data: subjects } = await sc
+        .from("subjects")
+        .select("id, department_id")
+        .in("department_id", deptIds);
+
+    // Get student enrollments with department field
+    const { data: students } = await sc
+        .from("enrollments")
+        .select("id, department")
+        .eq("institution_id", auth.institutionId!)
+        .eq("role", "student")
+        .eq("is_approved", true);
+
+    // Get faculty enrollments with department field
+    const { data: faculty } = await sc
+        .from("enrollments")
+        .select("id, department")
+        .eq("institution_id", auth.institutionId!)
+        .eq("role", "faculty")
+        .eq("is_approved", true);
+
+    // Build stats per department
+    const stats: Record<string, { classes: number; subjects: number; students: number; faculty: number }> = {};
+
+    for (const dept of depts) {
+        // Get dept name for matching enrollments by department field
+        const { data: deptData } = await sc
+            .from("departments")
+            .select("name")
+            .eq("id", dept.id)
+            .single();
+
+        const deptName = deptData?.name || "";
+
+        stats[dept.id] = {
+            classes: (classes || []).filter(c => c.department_id === dept.id).length,
+            subjects: (subjects || []).filter(s => s.department_id === dept.id).length,
+            students: (students || []).filter(s => s.department && s.department.toLowerCase() === deptName.toLowerCase()).length,
+            faculty: (faculty || []).filter(f => f.department && f.department.toLowerCase() === deptName.toLowerCase()).length,
+        };
+    }
+
+    return stats;
+}
+
 export async function createDepartment(slug: string, formData: { name: string; code: string; description?: string; hod_enrollment_id?: string }) {
     const auth = await verifyInstitutionAdmin(slug);
     if (auth.error) return { error: auth.error };

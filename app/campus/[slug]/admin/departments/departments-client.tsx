@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Loader2, GraduationCap, Building2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, GraduationCap, Building2, Users, BookOpen, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { createDepartment, updateDepartment, deleteDepartment } from "../academic-actions";
 
@@ -31,9 +31,12 @@ type Faculty = {
     department: string | null;
 };
 
-export default function DepartmentsClient({ initialDepartments, faculties, slug }: {
+type DeptStats = Record<string, { classes: number; subjects: number; students: number; faculty: number }>;
+
+export default function DepartmentsClient({ initialDepartments, faculties, stats, slug }: {
     initialDepartments: Department[];
     faculties: Faculty[];
+    stats: DeptStats;
     slug: string;
 }) {
     const [departments, setDepartments] = useState(initialDepartments);
@@ -81,7 +84,6 @@ export default function DepartmentsClient({ initialDepartments, faculties, slug 
                 toast.success(editItem ? "Department updated!" : "Department created!");
                 setDialogOpen(false);
                 resetForm();
-                // Reload data
                 window.location.reload();
             }
         });
@@ -104,15 +106,15 @@ export default function DepartmentsClient({ initialDepartments, faculties, slug 
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                        <Building2 className="h-8 w-8 text-violet-500" />
+                    <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+                        <Building2 className="h-6 w-6 text-violet-500" />
                         Departments
                     </h1>
-                    <p className="text-muted-foreground mt-1">Manage academic departments for your institution.</p>
+                    <p className="text-sm text-muted-foreground mt-1">Manage academic departments for your institution.</p>
                 </div>
                 <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
                     <DialogTrigger asChild>
-                        <Button onClick={openCreate} className="gap-2">
+                        <Button onClick={openCreate} className="gap-2 rounded-xl">
                             <Plus className="h-4 w-4" /> Add Department
                         </Button>
                     </DialogTrigger>
@@ -161,6 +163,15 @@ export default function DepartmentsClient({ initialDepartments, faculties, slug 
                 </Dialog>
             </div>
 
+            {/* Total Stats */}
+            <div className="flex gap-3 flex-wrap">
+                <div className="flex items-center gap-2 rounded-xl bg-violet-500/10 px-4 py-2 text-sm">
+                    <Building2 className="h-4 w-4 text-violet-500" />
+                    <span className="font-medium">{departments.length}</span>
+                    <span className="text-muted-foreground">Departments</span>
+                </div>
+            </div>
+
             {departments.length === 0 ? (
                 <Card className="border-dashed">
                     <CardContent className="flex flex-col items-center justify-center py-16 text-center">
@@ -174,40 +185,63 @@ export default function DepartmentsClient({ initialDepartments, faculties, slug 
                 </Card>
             ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {departments.map(dept => (
-                        <Card key={dept.id} className="group hover:shadow-lg transition-all border-border/60">
-                            <CardHeader className="pb-3">
+                    {departments.map(dept => {
+                        const deptStats = stats[dept.id] || { classes: 0, subjects: 0, students: 0, faculty: 0 };
+                        return (
+                            <div key={dept.id} className="group relative rounded-2xl border border-border/50 bg-card p-5 transition-all hover:border-violet-500/30 hover:shadow-lg hover:shadow-violet-500/5">
                                 <div className="flex items-start justify-between">
                                     <div>
-                                        <CardTitle className="text-lg">{dept.name}</CardTitle>
+                                        <h3 className="text-base font-semibold">{dept.name}</h3>
                                         <Badge variant="secondary" className="mt-1 font-mono text-xs">{dept.code}</Badge>
                                     </div>
                                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(dept)}>
+                                        <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg" onClick={() => openEdit(dept)}>
                                             <Pencil className="h-3.5 w-3.5" />
                                         </Button>
-                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDelete(dept.id, dept.name)}>
+                                        <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg text-destructive" onClick={() => handleDelete(dept.id, dept.name)}>
                                             <Trash2 className="h-3.5 w-3.5" />
                                         </Button>
                                     </div>
                                 </div>
-                            </CardHeader>
-                            <CardContent>
+
                                 {dept.description && (
-                                    <p className="text-sm text-muted-foreground mb-3">{dept.description}</p>
+                                    <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{dept.description}</p>
                                 )}
+
+                                {/* Stats Grid */}
+                                <div className="grid grid-cols-2 gap-2 mt-4">
+                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground rounded-lg bg-muted/50 px-2.5 py-1.5">
+                                        <Layers className="h-3 w-3 text-blue-500" />
+                                        <span className="font-medium text-foreground">{deptStats.classes}</span> Classes
+                                    </div>
+                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground rounded-lg bg-muted/50 px-2.5 py-1.5">
+                                        <BookOpen className="h-3 w-3 text-orange-500" />
+                                        <span className="font-medium text-foreground">{deptStats.subjects}</span> Subjects
+                                    </div>
+                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground rounded-lg bg-muted/50 px-2.5 py-1.5">
+                                        <GraduationCap className="h-3 w-3 text-emerald-500" />
+                                        <span className="font-medium text-foreground">{deptStats.students}</span> Students
+                                    </div>
+                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground rounded-lg bg-muted/50 px-2.5 py-1.5">
+                                        <Users className="h-3 w-3 text-violet-500" />
+                                        <span className="font-medium text-foreground">{deptStats.faculty}</span> Faculty
+                                    </div>
+                                </div>
+
+                                {/* HOD */}
                                 {dept.hod && (
-                                    <div className="flex items-center gap-2 text-xs text-muted-foreground border-t pt-3">
-                                        <span className="font-medium">HOD:</span>
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground border-t border-border/50 pt-3 mt-3">
+                                        <span className="font-medium text-foreground">HOD:</span>
                                         <span>{dept.hod.full_name}</span>
                                     </div>
                                 )}
+
                                 {!dept.is_active && (
                                     <Badge variant="destructive" className="mt-2 text-xs">Inactive</Badge>
                                 )}
-                            </CardContent>
-                        </Card>
-                    ))}
+                            </div>
+                        );
+                    })}
                 </div>
             )}
         </div>

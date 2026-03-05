@@ -43,6 +43,8 @@ export default async function CampusSlugLayout({
 
     // Determine user role from either auth method
     let userRole = "visitor";
+    let userFullName = "Campus User";
+    let userEmail = "";
 
     // Method 1: Check Supabase Auth membership
     if (user) {
@@ -57,11 +59,28 @@ export default async function CampusSlugLayout({
         if (membership) {
             userRole = membership.role;
         }
+
+        userFullName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Campus User";
+        userEmail = user.email || "";
     }
 
     // Method 2: Check ERP JWT session (takes priority if it matches this institution)
     if (erpSession && erpSession.institution_id === institution.id) {
         userRole = erpSession.role;
+
+        // Fetch user info from enrollments table
+        const { data: enrollment } = await supabase
+            .from("enrollments")
+            .select("full_name, email")
+            .eq("id", erpSession.enrollment_id)
+            .single();
+
+        if (enrollment) {
+            userFullName = enrollment.full_name || erpSession.identifier;
+            userEmail = enrollment.email || "Unknown Email";
+        } else {
+            userFullName = erpSession.identifier;
+        }
     }
 
     // Fetch buildings & POIs for AI context
@@ -95,6 +114,8 @@ export default async function CampusSlugLayout({
         <CampusLayout
             institution={institution}
             userRole={userRole}
+            userFullName={userFullName}
+            userEmail={userEmail}
             slug={slug}
             campusContext={campusContext}
         >

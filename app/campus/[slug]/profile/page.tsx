@@ -1,10 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { User, Mail, Phone, GraduationCap, Grid } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import ProfileEditButton from "./profile-edit-button";
 
 export default async function CampusProfilePage({
     params,
@@ -107,7 +107,15 @@ export default async function CampusProfilePage({
                         </p>
                     </div>
                     {/* Placeholder for future edit functionality (Requires a separate form page) */}
-                    <Button variant="outline">Edit Profile</Button>
+                    <ProfileEditButton
+                        slug={slug}
+                        profileData={{
+                            full_name: name,
+                            phone: profileData.phone || null,
+                            department: profileData.department || null,
+                            isErp: profileData.isErp,
+                        }}
+                    />
                 </div>
             </div>
 

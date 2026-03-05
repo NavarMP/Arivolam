@@ -181,3 +181,39 @@ export async function rejectEnrollment(enrollmentId: string, institutionSlug: st
     revalidatePath(`/campus/${institutionSlug}/admin/users`);
     return { success: true };
 }
+
+// ─── Admin Edit Member Profile ───
+export async function updateMemberProfile(
+    enrollmentId: string,
+    slug: string,
+    formData: {
+        full_name?: string;
+        phone?: string;
+        department?: string;
+        admission_number?: string;
+        register_number?: string;
+    }
+) {
+    const auth = await verifyInstitutionAdmin(slug);
+    if (auth.error) return { error: auth.error };
+
+    const sc = getServiceClient();
+
+    const updateData: Record<string, any> = {};
+    if (formData.full_name !== undefined) updateData.full_name = formData.full_name;
+    if (formData.phone !== undefined) updateData.phone = formData.phone || null;
+    if (formData.department !== undefined) updateData.department = formData.department || null;
+    if (formData.admission_number !== undefined) updateData.admission_number = formData.admission_number || null;
+    if (formData.register_number !== undefined) updateData.register_number = formData.register_number || null;
+
+    const { error } = await sc
+        .from("enrollments")
+        .update(updateData)
+        .eq("id", enrollmentId)
+        .eq("institution_id", auth.institutionId!);
+
+    if (error) return { error: error.message };
+
+    revalidatePath(`/campus/${slug}/admin`);
+    return { success: true };
+}

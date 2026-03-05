@@ -21,9 +21,11 @@ import {
     FileText,
     MessageSquare,
     Menu,
-    ChevronRight,
     Clock,
     CalendarCheck,
+    BookMarked,
+    LogOut,
+    ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -36,6 +38,14 @@ import {
     SheetTitle,
     SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { erpLogout } from "@/app/campus/actions";
 
 interface CampusLayoutProps {
     children: React.ReactNode;
@@ -47,6 +57,8 @@ interface CampusLayoutProps {
         logo_url: string | null;
     };
     userRole: string;
+    userFullName: string;
+    userEmail: string;
     slug: string;
     campusContext?: {
         institutionName?: string;
@@ -91,16 +103,19 @@ function getSidebarNav(slug: string, role: string) {
         ],
         admin: [
             { label: "Dashboard", href: `${base}/admin`, icon: Home },
-            { label: "User Management", href: `${base}/admin/users`, icon: Users },
+            { label: "Administrators", href: `${base}/admin/administrators`, icon: ShieldCheck },
+            { label: "Faculties", href: `${base}/admin/faculties`, icon: Users },
+            { label: "Students", href: `${base}/admin/students`, icon: GraduationCap },
             { label: "Semesters", href: `${base}/admin/semesters`, icon: Calendar },
             { label: "Departments", href: `${base}/admin/departments`, icon: GraduationCap },
             { label: "Classes", href: `${base}/admin/classes`, icon: Users },
             { label: "Periods", href: `${base}/admin/periods`, icon: Clock },
             { label: "Subjects", href: `${base}/admin/subjects`, icon: BookOpen },
-            { label: "Students", href: `${base}/admin/students`, icon: GraduationCap },
+            { label: "Courses", href: `${base}/admin/courses`, icon: BookMarked },
             { label: "Timetable", href: `${base}/admin/timetable`, icon: Calendar },
             { label: "Events", href: `${base}/admin/events`, icon: Calendar },
             { label: "Campus Map", href: `${base}/map`, icon: Compass },
+            { label: "Settings", href: `${base}/admin/settings`, icon: Settings },
             { label: "Profile", href: `${base}/profile`, icon: User },
         ],
     };
@@ -130,7 +145,7 @@ function getDockItems(slug: string, role: string): DockItem[] {
     return items;
 }
 
-export function CampusLayout({ children, institution, userRole, slug, campusContext }: CampusLayoutProps) {
+export function CampusLayout({ children, institution, userRole, userFullName, userEmail, slug, campusContext }: CampusLayoutProps) {
     const pathname = usePathname();
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -164,6 +179,19 @@ export function CampusLayout({ children, institution, userRole, slug, campusCont
                     </Link>
                 );
             })}
+
+            <div className="my-2 border-t border-border/40" />
+
+            <form action={erpLogout}>
+                <button
+                    type="submit"
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all text-destructive hover:bg-destructive/10"
+                    onClick={onNavigate}
+                >
+                    <LogOut className="h-4 w-4 shrink-0" />
+                    <span className="truncate">Sign Out</span>
+                </button>
+            </form>
         </div>
     );
 
@@ -219,23 +247,51 @@ export function CampusLayout({ children, institution, userRole, slug, campusCont
                         </Button>
                     </Link>
 
-                    <div className="flex items-center gap-2">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 overflow-hidden">
-                            <img
-                                src={institution.logo_url || "/assets/Logo.svg"}
-                                alt={institution.short_name || institution.name}
-                                className="h-7 w-7 object-contain"
-                            />
-                        </div>
-                        <div className="hidden sm:block">
-                            <p className="text-sm font-semibold leading-tight">
-                                {institution.short_name || institution.name}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground capitalize">
-                                {userRole}
-                            </p>
-                        </div>
-                    </div>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button className="flex items-center gap-2.5 rounded-xl border border-transparent hover:border-border/50 hover:bg-muted/30 px-2 py-1.5 transition-colors focus:outline-none focus:bg-muted/30 group">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 overflow-hidden">
+                                    <img
+                                        src={institution.logo_url || "/assets/Logo.svg"}
+                                        alt={institution.short_name || institution.name}
+                                        className="h-7 w-7 object-contain"
+                                    />
+                                </div>
+                                <div className="hidden sm:block text-left">
+                                    <p className="text-sm font-semibold leading-tight truncate max-w-[150px]">
+                                        {userFullName}
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground capitalize">
+                                        {userRole}
+                                    </p>
+                                </div>
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56 rounded-xl mt-1">
+                            <div className="flex flex-col space-y-1 p-2">
+                                <p className="text-sm font-medium leading-none truncate">{userFullName}</p>
+                                <p className="text-xs text-muted-foreground leading-none truncate">{userEmail}</p>
+                            </div>
+                            <DropdownMenuSeparator />
+                            <div className="p-2">
+                                <Link href={`/campus/${slug}/profile`}>
+                                    <Button variant="ghost" className="w-full justify-start gap-2 h-9 px-2">
+                                        <User className="h-4 w-4 text-muted-foreground" />
+                                        Profile Details
+                                    </Button>
+                                </Link>
+                            </div>
+                            <DropdownMenuSeparator />
+                            <div className="p-2">
+                                <form action={erpLogout}>
+                                    <Button type="submit" variant="ghost" className="w-full justify-start gap-2 h-9 px-2 text-destructive hover:bg-destructive/10 hover:text-destructive">
+                                        <LogOut className="h-4 w-4" />
+                                        Sign Out
+                                    </Button>
+                                </form>
+                            </div>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
 
                 <div className="flex items-center gap-2">

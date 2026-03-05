@@ -21,7 +21,7 @@ import {
     Sparkles,
 } from "lucide-react";
 import { AdaptiveLogo } from "@/components/shared/adaptive-logo";
-import { SiteNav } from "@/components/layout/site-nav";
+import { CampusNav } from "@/components/campus/campus-nav";
 
 const features = [
     {
@@ -106,9 +106,7 @@ export default function CampusLandingPage() {
 
             <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16">
                 {/* Navigation / Header */}
-                <div className="fixed top-0 left-0 right-0 z-20">
-                    <SiteNav />
-                </div>
+                <CampusNav />
 
                 {/* Hero Section */}
                 <div className="text-center pt-16">
