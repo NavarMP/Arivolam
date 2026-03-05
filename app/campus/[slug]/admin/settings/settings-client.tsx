@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { updateInstitutionDetails } from "./actions";
+import { ImageUpload } from "@/components/ui/image-upload";
 
 interface Institution {
     id: string;
@@ -204,18 +205,28 @@ export default function SettingsClient({ institution, slug }: Props) {
                 <div className="grid gap-4 rounded-2xl border border-border/50 bg-card p-5">
                     <div className="grid sm:grid-cols-2 gap-4">
                         <div className="grid gap-2">
-                            <Label htmlFor="logo_url">Logo URL</Label>
-                            <div className="relative">
-                                <ImageIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                <Input id="logo_url" value={logoUrl} onChange={e => setLogoUrl(e.target.value)} placeholder="https://..." className="pl-9 rounded-xl" />
-                            </div>
+                            <ImageUpload
+                                label="Campus Logo"
+                                value={logoUrl}
+                                onChange={setLogoUrl}
+                                aspectRatio={1}
+                                folder={`logos/${slug}`}
+                                width={400}
+                                height={400}
+                                placeholder="Drag & drop your logo here"
+                            />
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="cover_url">Cover Image URL</Label>
-                            <div className="relative">
-                                <ImageIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                <Input id="cover_url" value={coverUrl} onChange={e => setCoverUrl(e.target.value)} placeholder="https://..." className="pl-9 rounded-xl" />
-                            </div>
+                            <ImageUpload
+                                label="Cover Image"
+                                value={coverUrl}
+                                onChange={setCoverUrl}
+                                aspectRatio={3 / 1}
+                                folder={`covers/${slug}`}
+                                width={1200}
+                                height={400}
+                                placeholder="Drag & drop a cover image here"
+                            />
                         </div>
                     </div>
                     <div className="grid gap-2">
