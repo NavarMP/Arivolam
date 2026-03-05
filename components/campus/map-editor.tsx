@@ -2655,6 +2655,8 @@ export function MapEditor({
                         buildingId={selectedItem.data.id as string}
                         floorNumber={editingFloorPlan.number}
                         buildingName={(selectedItem.data as BuildingData).name || "Building"}
+                        buildingWidth={(selectedItem.data as BuildingData).cw}
+                        buildingHeight={(selectedItem.data as BuildingData).ch}
                         onSave={async (plan) => {
                             try {
                                 setSaving(true);

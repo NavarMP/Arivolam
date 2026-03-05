@@ -322,11 +322,11 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
         const matchSearch = searchQuery === "" || p.name.toLowerCase().includes(searchQuery.toLowerCase());
         return matchCategory && matchSearch;
     });
-    const allSearchResults = [
+    const allSearchResults = useMemo(() => [
         ...buildings.filter((b) => b.name.toLowerCase().includes(searchQuery.toLowerCase()) || (b.short_name || "").toLowerCase().includes(searchQuery.toLowerCase())).map((b) => ({ type: "building" as const, item: b })),
         ...pois.filter((p) => p.name.toLowerCase().includes(searchQuery.toLowerCase())).map((p) => ({ type: "poi" as const, item: p })),
-        ...buildings.flatMap((b) => (b.rooms || []).filter((r) => r.name.toLowerCase().includes(searchQuery.toLowerCase()) || (r.room_number || "").toLowerCase().includes(searchQuery.toLowerCase())).map((r) => ({ type: "room" as const, item: r, building: b }))),
-    ];
+        ...buildings.flatMap((b) => (b.rooms || []).filter((r) => r.name.toLowerCase().includes(searchQuery.toLowerCase()) || (r.room_number || "").toLowerCase().includes(searchQuery.toLowerCase()) || r.room_type.toLowerCase().replace('_', ' ').includes(searchQuery.toLowerCase())).map((r) => ({ type: "room" as const, item: r, building: b }))),
+    ], [searchQuery, buildings, pois]);
 
     // ─── Coordinate helpers ───
     const screenToWorld = useCallback((sx: number, sy: number) => ({
@@ -644,50 +644,95 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
                 ctx.stroke();
             }
 
-            // Icon dot
-            ctx.beginPath(); ctx.arc(pos.x + 18, pos.y + 18, 10, 0, Math.PI * 2);
-            ctx.fillStyle = col; ctx.fill();
-            ctx.fillStyle = tc.iconText; ctx.font = `bold ${10}px Inter, system-ui`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-            ctx.fillText(b.floors.toString(), pos.x + 18, pos.y + 18);
+            /* === PROGRESSIVE ZOOM DETAIL === */
 
-            // Name
-            const fSize = Math.max(10, 13);
-            ctx.font = `600 ${fSize}px Inter, system-ui`; ctx.fillStyle = tc.textPrimary; ctx.textAlign = "left"; ctx.textBaseline = "top";
-            const label = zoom < 0.5 ? (b.short_name || b.name).slice(0, 8) : b.name;
-            ctx.fillText(label, pos.x + 36, pos.y + 12, pos.w - 44);
+            // Level 1 (zoom < 0.3): Just shapes + category color
+            // Level 2 (zoom 0.3–0.7): + short name + floor dot
+            // Level 3 (zoom 0.7–1.5): + full name + category label + room count
+            // Level 4 (zoom 1.5–3.0): + description + operating hours
+            // Level 5 (zoom 3.0–6.0): + room list for ALL buildings
+            // Level 6 (zoom > 6.0): + room capacity, type, details
 
-            // Category
-            ctx.font = `${10}px Inter, system-ui`; ctx.fillStyle = tc.textSecondary;
-            ctx.fillText(`${b.category} · ${b.floors}F`, pos.x + 36, pos.y + 30, pos.w - 44);
-
-            // Room count
-            if (b.rooms && b.rooms.length > 0) {
-                ctx.font = `${9}px Inter, system-ui`; ctx.fillStyle = "#64748b";
-                ctx.fillText(`${b.rooms.length} rooms`, pos.x + 8, pos.y + pos.h - 14);
+            if (zoom >= 0.3) {
+                // Icon dot
+                ctx.beginPath(); ctx.arc(pos.x + 18, pos.y + 18, 10, 0, Math.PI * 2);
+                ctx.fillStyle = col; ctx.fill();
+                ctx.fillStyle = tc.iconText; ctx.font = `bold ${10}px Inter, system-ui`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                ctx.fillText(b.floors.toString(), pos.x + 18, pos.y + 18);
             }
 
-            // Description preview at high zoom
+            if (zoom < 0.7) {
+                // Short name only
+                if (zoom >= 0.3) {
+                    const fSize = Math.max(9, 11);
+                    ctx.font = `600 ${fSize}px Inter, system-ui`; ctx.fillStyle = tc.textPrimary; ctx.textAlign = "left"; ctx.textBaseline = "top";
+                    ctx.fillText((b.short_name || b.name).slice(0, 12), pos.x + 36, pos.y + 14, pos.w - 44);
+                }
+            } else {
+                // Full name (zoom >= 0.7)
+                const fSize = Math.max(10, 13);
+                ctx.font = `600 ${fSize}px Inter, system-ui`; ctx.fillStyle = tc.textPrimary; ctx.textAlign = "left"; ctx.textBaseline = "top";
+                ctx.fillText(b.name, pos.x + 36, pos.y + 12, pos.w - 44);
+
+                // Category + floors
+                ctx.font = `${10}px Inter, system-ui`; ctx.fillStyle = tc.textSecondary;
+                ctx.fillText(`${b.category} · ${b.floors}F`, pos.x + 36, pos.y + 30, pos.w - 44);
+
+                // Room count badge
+                if (b.rooms && b.rooms.length > 0) {
+                    ctx.font = `${9}px Inter, system-ui`; ctx.fillStyle = tc.textSecondary;
+                    ctx.fillText(`${b.rooms.length} rooms`, pos.x + 8, pos.y + pos.h - 14);
+                }
+            }
+
+            // Description preview at zoom >= 1.5
             if (zoom >= 1.5 && b.description) {
-                ctx.font = `${9}px Inter, system-ui`; ctx.fillStyle = "#64748b";
-                const desc = b.description.length > 50 ? b.description.slice(0, 50) + "..." : b.description;
+                ctx.font = `${9}px Inter, system-ui`; ctx.fillStyle = tc.textSecondary;
+                const desc = b.description.length > 60 ? b.description.slice(0, 60) + "..." : b.description;
                 ctx.fillText(desc, pos.x + 8, pos.y + 48, pos.w - 16);
             }
 
-            // Room details at very high zoom
-            if (zoom >= 3 && b.rooms && isSel) {
-                let ry = pos.y + 65;
-                for (const room of b.rooms.slice(0, 6)) {
+            // Operating hours at zoom >= 1.5
+            if (zoom >= 1.5 && b.operating_hours) {
+                ctx.font = `${8}px Inter, system-ui`; ctx.fillStyle = tc.textSecondary;
+                ctx.fillText(`🕐 ${b.operating_hours}`, pos.x + 8, pos.y + 60, pos.w - 16);
+            }
+
+            // Room list at zoom >= 3 (for ALL buildings, not just selected)
+            if (zoom >= 3 && b.rooms && b.rooms.length > 0) {
+                let ry = pos.y + (zoom >= 1.5 ? 75 : 48);
+                const maxRooms = zoom >= 6 ? 12 : 6;
+                const visibleRooms = b.rooms.slice(0, maxRooms);
+                for (const room of visibleRooms) {
                     ctx.fillStyle = tc.roomBg;
-                    ctx.fillRect(pos.x + 8, ry - 4, pos.w - 16, 20);
+                    ctx.fillRect(pos.x + 6, ry - 2, pos.w - 12, zoom >= 6 ? 28 : 18);
                     ctx.strokeStyle = tc.roomBorder; ctx.lineWidth = 0.5 / zoom;
-                    ctx.strokeRect(pos.x + 8, ry - 4, pos.w - 16, 20);
+                    ctx.strokeRect(pos.x + 6, ry - 2, pos.w - 12, zoom >= 6 ? 28 : 18);
                     ctx.font = `${9}px Inter, system-ui`; ctx.fillStyle = tc.roomText; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-                    ctx.fillText(`${room.room_number || "•"} ${room.name}`, pos.x + 10, ry + 8, pos.w - 24);
-                    if (room.capacity) {
-                        ctx.textAlign = "right"; ctx.fillStyle = tc.textSecondary;
-                        ctx.fillText(`${room.capacity}`, pos.x + pos.w - 10, ry + 8);
+                    ctx.fillText(`${room.room_number || "•"} ${room.name}`, pos.x + 10, ry + 6, pos.w - 28);
+
+                    // Zoom >= 6: show capacity + room type
+                    if (zoom >= 6) {
+                        ctx.font = `${8}px Inter, system-ui`; ctx.fillStyle = tc.textSecondary;
+                        const detail = `${room.room_type.replace("_", " ")}${room.capacity ? ` · ${room.capacity} seats` : ""}`;
+                        ctx.fillText(detail, pos.x + 10, ry + 18, pos.w - 28);
+                        if (room.capacity) {
+                            ctx.textAlign = "right"; ctx.font = `bold ${9}px Inter, system-ui`; ctx.fillStyle = col;
+                            ctx.fillText(`${room.capacity}`, pos.x + pos.w - 10, ry + 6);
+                        }
+                        ry += 30;
+                    } else {
+                        if (room.capacity) {
+                            ctx.textAlign = "right"; ctx.fillStyle = tc.textSecondary;
+                            ctx.fillText(`${room.capacity}`, pos.x + pos.w - 10, ry + 6);
+                        }
+                        ry += 20;
                     }
-                    ry += 18; ctx.textAlign = "left";
+                    ctx.textAlign = "left";
+                }
+                if (b.rooms.length > maxRooms) {
+                    ctx.font = `italic ${8}px Inter, system-ui`; ctx.fillStyle = tc.textSecondary;
+                    ctx.fillText(`+${b.rooms.length - maxRooms} more...`, pos.x + 10, ry + 4);
                 }
             }
         }
@@ -959,18 +1004,38 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
                                     allSearchResults.map((result, idx) => {
                                         const isBuilding = result.type === "building";
                                         const isRoom = result.type === "room";
+                                        const room = isRoom ? (result as any).item as Room : null;
+                                        const bldg = isRoom ? (result as any).building as Building : (isBuilding ? result.item as Building : null);
+
                                         return (
                                             <button key={`${result.type}-${idx}`} className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-muted/50 transition-colors border-b last:border-0 md:gap-3 md:px-4 md:py-3"
-                                                onClick={() => { if (isBuilding) setSelectedBuilding(result.item as Building); else if (isRoom) setSelectedBuilding((result as any).building); setShowSearch(false); setSearchQuery(""); }}>
-                                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: isBuilding ? (result.item as Building).color + "20" : isRoom ? (result as any).building.color + "20" : "#64748b20" }}>
-                                                    {isBuilding ? <Building2 className="h-4 w-4" style={{ color: (result.item as Building).color }} /> : <MapPin className="h-4 w-4 text-muted-foreground" />}
+                                                onClick={() => {
+                                                    if (bldg) {
+                                                        setSelectedBuilding(bldg);
+                                                        // Automatically load and open the floor plan for the room
+                                                        if (isRoom && room?.floor_number !== undefined) {
+                                                            // We cannot open immediately because floorPlans are fetched via useEffect
+                                                            // We can set a temporary state or just let the user see the building details
+                                                            // where the floor plans will be available.
+                                                        }
+                                                    }
+                                                    setShowSearch(false);
+                                                    setSearchQuery("");
+                                                }}>
+                                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: bldg ? bldg.color + "20" : "#64748b20" }}>
+                                                    {isBuilding ? <Building2 className="h-4 w-4" style={{ color: bldg?.color }} /> : isRoom ? <DoorOpen className="h-4 w-4" style={{ color: bldg?.color }} /> : <MapPin className="h-4 w-4 text-muted-foreground" />}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-medium truncate">{isRoom ? `${(result as any).item.name}${(result as any).item.room_number ? ` (${(result as any).item.room_number})` : ""}` : result.item.name}</p>
-                                                    <p className="text-xs text-muted-foreground truncate">{isBuilding ? (result.item as Building).category : isRoom ? `${(result as any).building.name}` : (result.item as POI).category}</p>
+                                                    <p className="text-sm font-medium truncate">{isRoom ? `${room?.name}${room?.room_number ? ` (${room.room_number})` : ""}` : result.item.name}</p>
+                                                    <p className="text-xs text-muted-foreground truncate">{isBuilding ? bldg?.category : isRoom ? `${bldg?.name} • Floor ${room?.floor_number ?? 0}` : (result.item as POI).category}</p>
                                                 </div>
-                                                {isBuilding && (
-                                                    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={(e) => { e.stopPropagation(); navigateToBuilding(result.item as Building); setShowSearch(false); setSearchQuery(""); }}>
+                                                {bldg && (
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        navigateToBuilding(bldg);
+                                                        setShowSearch(false);
+                                                        setSearchQuery("");
+                                                    }}>
                                                         <Navigation className="h-3.5 w-3.5 text-primary" />
                                                     </Button>
                                                 )}
@@ -1008,7 +1073,12 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
                     <Button variant={showBaseMap ? "default" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setShowBaseMap(!showBaseMap)} title="Toggle Map Layer"><Globe className="h-4 w-4" /></Button>
                     <div className="w-full h-[1px] bg-border my-0.5" />
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={zoomIn} title="Zoom In"><ZoomIn className="h-4 w-4" /></Button>
-                    <Badge variant="outline" className="text-[10px] justify-center py-0.5 px-1 font-mono">{Math.round(zoom * 100)}%</Badge>
+                    <div className="flex flex-col items-center">
+                        <Badge variant="outline" className="text-[10px] justify-center py-0.5 px-1 font-mono">{Math.round(zoom * 100)}%</Badge>
+                        <span className="text-[8px] text-muted-foreground mt-0.5">
+                            {zoom < 0.3 ? "Campus" : zoom < 0.7 ? "Overview" : zoom < 1.5 ? "Buildings" : zoom < 3 ? "Details" : zoom < 6 ? "Rooms" : "Full"}
+                        </span>
+                    </div>
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={zoomOut} title="Zoom Out"><ZoomOut className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={fitAll} title="Fit All"><Maximize2 className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleToggleFullscreen} title="Fullscreen">
@@ -1132,7 +1202,7 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
                                 {buildings.sort((a, b) => a.sort_order - b.sort_order).map((b) => {
                                     const Icon = ICON_MAP[b.icon] || Building2;
                                     return (
-                                        <button key={b.id} className="flex w-full items-center gap-3 rounded-lg p-3 text-left hover:bg-muted/50 transition-colors"
+                                        <div key={b.id} className="flex w-full items-center gap-3 rounded-lg p-3 text-left hover:bg-muted/50 transition-colors cursor-pointer"
                                             onClick={() => { setSelectedBuilding(b); setShowDirectory(false); }}>
                                             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: b.color + "20" }}>
                                                 <Icon className="h-5 w-5" />
@@ -1141,11 +1211,11 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
                                                 <p className="font-medium text-sm truncate">{b.name}</p>
                                                 <p className="text-xs text-muted-foreground capitalize">{b.category} • {b.floors} floor{b.floors > 1 ? "s" : ""}</p>
                                             </div>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={(e) => { e.stopPropagation(); navigateToBuilding(b); setShowDirectory(false); }}>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 relative z-10" onClick={(e) => { e.stopPropagation(); navigateToBuilding(b); setShowDirectory(false); }}>
                                                 <Navigation className="h-4 w-4 text-primary" />
                                             </Button>
                                             <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                                        </button>
+                                        </div>
                                     );
                                 })}
                             </div>
@@ -1208,19 +1278,36 @@ export function CampusMap({ buildings: propBuildings, pois: propPois, navNodes: 
                                         </optgroup>
                                     </select>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2 mb-4">
+                                <div className="grid gap-4 mb-4">
                                     <Button className="w-full gap-2" onClick={() => navigateToBuilding(selectedBuilding)}>
                                         <Navigation className="h-4 w-4" />Navigate
                                     </Button>
-                                    <Button
-                                        variant="secondary"
-                                        className="w-full gap-2"
-                                        onClick={() => setShowFloorPlanOverlay(true)}
-                                        disabled={loadingFloorPlans || floorPlans.length === 0}
-                                    >
-                                        <Layers className="h-4 w-4" />
-                                        {loadingFloorPlans ? "Loading..." : "Floor Plans"}
-                                    </Button>
+
+                                    {/* Floor Selector */}
+                                    {loadingFloorPlans ? (
+                                        <div className="flex items-center justify-center p-3 border rounded-lg bg-muted/10 text-sm text-muted-foreground animate-pulse">
+                                            <Layers className="h-4 w-4 mr-2" /> Loading floors...
+                                        </div>
+                                    ) : floorPlans.length > 0 ? (
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                                                <Layers className="h-3.5 w-3.5" /> Floor Plans
+                                            </label>
+                                            <div className="flex flex-wrap gap-2">
+                                                {floorPlans.sort((a, b) => a.floor_number - b.floor_number).map((plan) => (
+                                                    <Button
+                                                        key={plan.id}
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-9 px-4 font-medium"
+                                                        onClick={() => setViewingFloorPlan(plan)}
+                                                    >
+                                                        Floor {plan.floor_number}
+                                                    </Button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ) : null}
                                 </div>
                                 {selectedBuilding.rooms && selectedBuilding.rooms.length > 0 && (() => {
                                     // Group rooms by floor

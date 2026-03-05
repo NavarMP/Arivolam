@@ -46,7 +46,7 @@ alter table public.assignment_submissions enable row level security;
 -- Assignments: students/faculty/admins can read (if published or if they are the creator/admin)
 create policy "assignments_select" on public.assignments for select using (
   is_published = true 
-  or created_by = (select id from public.enrollments e where e.user_id = auth.uid() and e.id = assignments.created_by)
+  or created_by = (select id from public.enrollments e where e.linked_user_id = auth.uid() and e.id = assignments.created_by)
   or exists (
     select 1 from public.institution_members m 
     where m.user_id = auth.uid() and m.institution_id = assignments.institution_id and m.role = 'admin'
@@ -62,7 +62,7 @@ create policy "assignments_faculty_write" on public.assignments for all using (
 
 -- Submissions: students can see their own, faculty/admins can see all for assignments they can see
 create policy "submissions_select" on public.assignment_submissions for select using (
-  student_enrollment_id in (select id from public.enrollments e where e.user_id = auth.uid())
+  student_enrollment_id in (select id from public.enrollments e where e.linked_user_id = auth.uid())
   or exists (
     select 1 from public.assignments a
     join public.institution_members m on m.institution_id = a.institution_id
@@ -73,11 +73,11 @@ create policy "submissions_select" on public.assignment_submissions for select u
 );
 
 create policy "submissions_student_insert" on public.assignment_submissions for insert with check (
-  student_enrollment_id in (select id from public.enrollments e where e.user_id = auth.uid())
+  student_enrollment_id in (select id from public.enrollments e where e.linked_user_id = auth.uid())
 );
 
 create policy "submissions_student_update" on public.assignment_submissions for update using (
-  student_enrollment_id in (select id from public.enrollments e where e.user_id = auth.uid())
+  student_enrollment_id in (select id from public.enrollments e where e.linked_user_id = auth.uid())
 );
 
 create policy "submissions_faculty_update" on public.assignment_submissions for update using (

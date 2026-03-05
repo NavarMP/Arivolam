@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";
+import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -14,16 +15,21 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     X, ZoomIn, ZoomOut, RotateCcw, Save, Plus, Trash2,
-    Square, Circle, Type, Move, MousePointer2, DoorOpen,
-    Armchair, MonitorSmartphone, BookOpen,
+    Type, MousePointer2, DoorOpen, Grid3X3,
+    Minus, Footprints, ArrowUpDown,
+    Square, ChevronDown, ChevronUp, Pencil,
 } from "lucide-react";
 
-// Dynamic import react-konva (canvas library, needs browser)
-// Wrap named exports with { default: ... } to prevent Turbopack's convertModule
-// from receiving a string instead of a component (fixes "Cannot use 'in' operator" crash)
+// Dynamic import react-konva
 const Stage = dynamic(() => import("react-konva").then((m) => ({ default: m.Stage })), { ssr: false });
 const KonvaLayer = dynamic(() => import("react-konva").then((m) => ({ default: m.Layer })), { ssr: false });
 const Rect = dynamic(() => import("react-konva").then((m) => ({ default: m.Rect })), { ssr: false });
@@ -31,13 +37,12 @@ const KonvaCircle = dynamic(() => import("react-konva").then((m) => ({ default: 
 const Text = dynamic(() => import("react-konva").then((m) => ({ default: m.Text })), { ssr: false });
 const Line = dynamic(() => import("react-konva").then((m) => ({ default: m.Line })), { ssr: false });
 const Group = dynamic(() => import("react-konva").then((m) => ({ default: m.Group })), { ssr: false });
-const KonvaTransformer = dynamic(() => import("react-konva").then((m) => ({ default: m.Transformer })), { ssr: false });
 
 // ─── Types ───
 
 export interface FloorElement {
     id: string;
-    type: "room" | "wall" | "door" | "furniture" | "label" | "staircase" | "elevator";
+    type: "room" | "wall" | "door" | "staircase" | "elevator" | "corridor" | "label";
     x: number;
     y: number;
     width?: number;
@@ -67,24 +72,17 @@ export interface FloorPlan {
 
 // ─── Constants ───
 
-type ToolType = "select" | "room" | "wall" | "door" | "furniture" | "label";
+type ToolType = "select" | "room" | "wall" | "door" | "staircase" | "elevator" | "corridor" | "label";
 
-const TOOLS: { mode: ToolType; icon: typeof Square; label: string }[] = [
-    { mode: "select", icon: MousePointer2, label: "Select / Move" },
-    { mode: "room", icon: Square, label: "Draw Room" },
-    { mode: "wall", icon: Square, label: "Draw Wall" },
-    { mode: "door", icon: DoorOpen, label: "Place Door" },
-    { mode: "furniture", icon: Armchair, label: "Place Furniture" },
-    { mode: "label", icon: Type, label: "Add Label" },
-];
-
-const FURNITURE_PRESETS = [
-    { name: "Desk", width: 60, height: 30, fill: "#f59e0b40", stroke: "#f59e0b" },
-    { name: "Chair", width: 20, height: 20, fill: "#6366f140", stroke: "#6366f1" },
-    { name: "Table", width: 80, height: 40, fill: "#0ea5e940", stroke: "#0ea5e9" },
-    { name: "Projector", width: 30, height: 15, fill: "#8b5cf640", stroke: "#8b5cf6" },
-    { name: "Whiteboard", width: 100, height: 8, fill: "#f1f5f9", stroke: "#64748b" },
-    { name: "Computer", width: 25, height: 25, fill: "#1e293b40", stroke: "#1e293b" },
+const TOOLS: { mode: ToolType; icon: typeof Square; label: string; shortcut?: string }[] = [
+    { mode: "select", icon: MousePointer2, label: "Select / Move", shortcut: "V" },
+    { mode: "room", icon: Square, label: "Draw Room", shortcut: "R" },
+    { mode: "wall", icon: Minus, label: "Draw Wall", shortcut: "W" },
+    { mode: "door", icon: DoorOpen, label: "Place Door", shortcut: "D" },
+    { mode: "staircase", icon: Footprints, label: "Place Staircase", shortcut: "S" },
+    { mode: "elevator", icon: ArrowUpDown, label: "Place Elevator", shortcut: "E" },
+    { mode: "corridor", icon: Grid3X3, label: "Draw Corridor", shortcut: "C" },
+    { mode: "label", icon: Type, label: "Add Label", shortcut: "T" },
 ];
 
 const ROOM_COLORS: Record<string, string> = {
@@ -93,10 +91,77 @@ const ROOM_COLORS: Record<string, string> = {
     office: "#f59e0b20",
     library: "#22c55e20",
     seminar_hall: "#ec489920",
+    auditorium: "#f9731620",
     restroom: "#06b6d420",
-    storage: "#64748b20",
-    corridor: "#f1f5f9",
+    canteen: "#d9770620",
+    prayer_room: "#05966920",
+    storeroom: "#64748b20",
+    conference: "#6366f120",
+    common_area: "#14b8a620",
+    other: "#94a3b820",
+    corridor: "#f1f5f940",
 };
+
+const ROOM_BORDERS: Record<string, string> = {
+    classroom: "#3b82f6",
+    lab: "#8b5cf6",
+    office: "#f59e0b",
+    library: "#22c55e",
+    seminar_hall: "#ec4899",
+    auditorium: "#f97316",
+    restroom: "#06b6d4",
+    canteen: "#d97706",
+    prayer_room: "#059669",
+    storeroom: "#64748b",
+    conference: "#6366f1",
+    common_area: "#14b8a6",
+    other: "#94a3b8",
+    corridor: "#cbd5e1",
+};
+
+// ─── Theme Palettes ───
+const THEME = {
+    dark: {
+        canvasBg: "#0f172a",
+        gridMinor: "#1e293b80",
+        gridMajor: "#475569",
+        text: "#e2e8f0",
+        textSec: "#94a3b8",
+        panelBg: "rgba(15,23,42,0.95)",
+        selStroke: "#60a5fa",
+        wallStroke: "#94a3b8",
+        roomLabel: "#e2e8f0",
+        doorFill: "#334155",
+        stairFill: "#f59e0b30",
+        stairStroke: "#f59e0b",
+        elevFill: "#8b5cf630",
+        elevStroke: "#8b5cf6",
+        corridorFill: "#1e293b60",
+        corridorStroke: "#475569",
+    },
+    light: {
+        canvasBg: "#f8fafc",
+        gridMinor: "#e2e8f0",
+        gridMajor: "#cbd5e1",
+        text: "#1e293b",
+        textSec: "#64748b",
+        panelBg: "rgba(255,255,255,0.95)",
+        selStroke: "#3b82f6",
+        wallStroke: "#334155",
+        roomLabel: "#1e293b",
+        doorFill: "#f1f5f9",
+        stairFill: "#f59e0b20",
+        stairStroke: "#f59e0b",
+        elevFill: "#8b5cf620",
+        elevStroke: "#8b5cf6",
+        corridorFill: "#f1f5f980",
+        corridorStroke: "#94a3b8",
+    },
+};
+
+const GRID_SIZE = 25;
+const MIN_ZOOM = 0.2;
+const MAX_ZOOM = 5;
 
 // ─── Floor Plan Viewer (read-only, for users) ───
 
@@ -106,15 +171,25 @@ interface FloorPlanViewerProps {
 }
 
 export function FloorPlanViewer({ floorPlan, onClose }: FloorPlanViewerProps) {
+    const { resolvedTheme } = useTheme();
+    const tc = THEME[resolvedTheme === "light" ? "light" : "dark"];
     const [scale, setScale] = useState(1);
     const [offset, setOffset] = useState({ x: 0, y: 0 });
     const containerRef = useRef<HTMLDivElement>(null);
+    const [dims, setDims] = useState({ w: 800, h: 600 });
 
-    const handleWheel = useCallback((e: React.WheelEvent) => {
-        e.preventDefault();
-        const newScale = Math.max(0.3, Math.min(3, scale - e.deltaY * 0.001));
-        setScale(newScale);
-    }, [scale]);
+    useEffect(() => {
+        const el = containerRef.current;
+        if (!el) return;
+        const obs = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+                setDims({ w: entry.contentRect.width, h: entry.contentRect.height });
+            }
+        });
+        obs.observe(el);
+        setDims({ w: el.clientWidth, h: el.clientHeight });
+        return () => obs.disconnect();
+    }, []);
 
     return (
         <motion.div
@@ -123,7 +198,7 @@ export function FloorPlanViewer({ floorPlan, onClose }: FloorPlanViewerProps) {
             exit={{ opacity: 0, scale: 0.95 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
         >
-            <div className="relative bg-background rounded-2xl shadow-2xl border w-[90vw] h-[80vh] max-w-4xl overflow-hidden">
+            <div className="relative bg-background rounded-2xl shadow-2xl border w-[90vw] h-[80vh] max-w-4xl overflow-hidden flex flex-col">
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b">
                     <div>
@@ -152,141 +227,200 @@ export function FloorPlanViewer({ floorPlan, onClose }: FloorPlanViewerProps) {
                 {/* Canvas */}
                 <div
                     ref={containerRef}
-                    className="flex-1 overflow-hidden bg-muted/30"
-                    style={{ height: "calc(100% - 52px)" }}
-                    onWheel={handleWheel}
+                    className="flex-1 overflow-hidden"
+                    style={{ backgroundColor: tc.canvasBg }}
+                    onWheel={(e) => {
+                        e.preventDefault();
+                        const factor = e.deltaY < 0 ? 1.1 : 0.9;
+                        setScale((s) => Math.max(0.2, Math.min(5, s * factor)));
+                    }}
                 >
                     <Stage
-                        width={containerRef.current?.clientWidth || 800}
-                        height={containerRef.current?.clientHeight || 600}
+                        width={dims.w}
+                        height={dims.h}
                         scaleX={scale}
                         scaleY={scale}
                         x={offset.x}
                         y={offset.y}
                         draggable
-                        onDragEnd={(e) => {
-                            setOffset({ x: e.target.x(), y: e.target.y() });
-                        }}
+                        onDragEnd={(e) => setOffset({ x: e.target.x(), y: e.target.y() })}
                     >
                         <KonvaLayer>
                             {/* Grid */}
-                            {Array.from({ length: Math.ceil(floorPlan.width / 50) + 1 }).map((_, i) => (
-                                <Line
-                                    key={`gv-${i}`}
-                                    points={[i * 50, 0, i * 50, floorPlan.height]}
-                                    stroke="#e2e8f0"
-                                    strokeWidth={0.5}
-                                />
+                            {Array.from({ length: Math.ceil(floorPlan.width / GRID_SIZE) + 1 }).map((_, i) => (
+                                <Line key={`gv-${i}`} points={[i * GRID_SIZE, 0, i * GRID_SIZE, floorPlan.height]} stroke={tc.gridMinor} strokeWidth={0.5} />
                             ))}
-                            {Array.from({ length: Math.ceil(floorPlan.height / 50) + 1 }).map((_, i) => (
-                                <Line
-                                    key={`gh-${i}`}
-                                    points={[0, i * 50, floorPlan.width, i * 50]}
-                                    stroke="#e2e8f0"
-                                    strokeWidth={0.5}
-                                />
+                            {Array.from({ length: Math.ceil(floorPlan.height / GRID_SIZE) + 1 }).map((_, i) => (
+                                <Line key={`gh-${i}`} points={[0, i * GRID_SIZE, floorPlan.width, i * GRID_SIZE]} stroke={tc.gridMinor} strokeWidth={0.5} />
                             ))}
 
                             {/* Elements */}
-                            {floorPlan.elements.map((el) => {
-                                switch (el.type) {
-                                    case "room":
-                                        return (
-                                            <Group key={el.id}>
-                                                <Rect
-                                                    x={el.x}
-                                                    y={el.y}
-                                                    width={el.width || 100}
-                                                    height={el.height || 80}
-                                                    fill={el.fill || ROOM_COLORS[el.roomType || "classroom"]}
-                                                    stroke={el.stroke || "#94a3b8"}
-                                                    strokeWidth={1.5}
-                                                    cornerRadius={2}
-                                                />
-                                                {el.name && (
-                                                    <Text
-                                                        x={el.x + 4}
-                                                        y={el.y + 4}
-                                                        text={el.name}
-                                                        fontSize={11}
-                                                        fontStyle="bold"
-                                                        fill="#1e293b"
-                                                        width={(el.width || 100) - 8}
-                                                    />
-                                                )}
-                                                {el.capacity && (
-                                                    <Text
-                                                        x={el.x + 4}
-                                                        y={el.y + (el.height || 80) - 16}
-                                                        text={`${el.capacity} seats`}
-                                                        fontSize={9}
-                                                        fill="#64748b"
-                                                    />
-                                                )}
-                                            </Group>
-                                        );
-                                    case "wall":
-                                        return (
-                                            <Line
-                                                key={el.id}
-                                                points={el.points || [el.x, el.y, el.x + (el.width || 100), el.y]}
-                                                stroke={el.stroke || "#334155"}
-                                                strokeWidth={4}
-                                                lineCap="round"
-                                            />
-                                        );
-                                    case "door":
-                                        return (
-                                            <Group key={el.id}>
-                                                <Rect
-                                                    x={el.x}
-                                                    y={el.y}
-                                                    width={el.width || 30}
-                                                    height={el.height || 6}
-                                                    fill="#f1f5f9"
-                                                    stroke="#94a3b8"
-                                                    strokeWidth={1}
-                                                    cornerRadius={1}
-                                                />
-                                            </Group>
-                                        );
-                                    case "furniture":
-                                        return (
-                                            <Rect
-                                                key={el.id}
-                                                x={el.x}
-                                                y={el.y}
-                                                width={el.width || 40}
-                                                height={el.height || 30}
-                                                fill={el.fill || "#f59e0b20"}
-                                                stroke={el.stroke || "#f59e0b"}
-                                                strokeWidth={1}
-                                                cornerRadius={3}
-                                                rotation={el.rotation || 0}
-                                            />
-                                        );
-                                    case "label":
-                                        return (
-                                            <Text
-                                                key={el.id}
-                                                x={el.x}
-                                                y={el.y}
-                                                text={el.text || "Label"}
-                                                fontSize={el.fontSize || 14}
-                                                fontStyle="bold"
-                                                fill={el.fill || "#1e293b"}
-                                            />
-                                        );
-                                    default:
-                                        return null;
-                                }
-                            })}
+                            {floorPlan.elements.map((el) => renderElement(el, false, tc))}
                         </KonvaLayer>
                     </Stage>
                 </div>
             </div>
         </motion.div>
     );
+}
+
+// ─── Shared element renderer ───
+function renderElement(el: FloorElement, isSelected: boolean, tc: typeof THEME.dark, extraProps?: any) {
+    const selStroke = tc.selStroke;
+    switch (el.type) {
+        case "room":
+            return (
+                <Group key={el.id} {...extraProps}>
+                    <Rect
+                        x={el.x} y={el.y}
+                        width={el.width || 100} height={el.height || 80}
+                        fill={el.fill || ROOM_COLORS[el.roomType || "classroom"]}
+                        stroke={isSelected ? selStroke : (el.stroke || ROOM_BORDERS[el.roomType || "classroom"] || "#94a3b8")}
+                        strokeWidth={isSelected ? 2.5 : 1.5}
+                        cornerRadius={3}
+                    />
+                    {el.name && (
+                        <Text x={el.x + 6} y={el.y + 6} text={el.name} fontSize={11}
+                            fontStyle="600" fill={tc.roomLabel} width={(el.width || 100) - 12} />
+                    )}
+                    {el.roomType && (
+                        <Text x={el.x + 6} y={el.y + 20} text={el.roomType.replace("_", " ")} fontSize={8}
+                            fill={tc.textSec} width={(el.width || 100) - 12} />
+                    )}
+                    {el.capacity && (
+                        <Text x={el.x + 6} y={el.y + (el.height || 80) - 16}
+                            text={`${el.capacity} seats`} fontSize={9} fill={tc.textSec} />
+                    )}
+                </Group>
+            );
+        case "wall":
+            return (
+                <Line
+                    key={el.id}
+                    points={el.points || [el.x, el.y, el.x + (el.width || 100), el.y]}
+                    stroke={isSelected ? selStroke : (el.stroke || tc.wallStroke)}
+                    strokeWidth={isSelected ? 5 : 4}
+                    lineCap="round"
+                    hitStrokeWidth={12}
+                    {...extraProps}
+                />
+            );
+        case "door":
+            return (
+                <Group key={el.id} {...extraProps}>
+                    <Rect
+                        x={el.x} y={el.y}
+                        width={el.width || 30} height={el.height || 8}
+                        fill={isSelected ? "#bfdbfe" : tc.doorFill}
+                        stroke={isSelected ? selStroke : "#94a3b8"}
+                        strokeWidth={1}
+                        cornerRadius={2}
+                    />
+                    {/* Door arc indicator */}
+                    <Line
+                        points={[el.x + 2, el.y + (el.height || 8), el.x + (el.width || 30) - 2, el.y + (el.height || 8)]}
+                        stroke={isSelected ? selStroke : "#94a3b8"}
+                        strokeWidth={0.5}
+                        dash={[3, 2]}
+                    />
+                </Group>
+            );
+        case "staircase":
+            return (
+                <Group key={el.id} {...extraProps}>
+                    <Rect
+                        x={el.x} y={el.y}
+                        width={el.width || 40} height={el.height || 50}
+                        fill={isSelected ? "#fef3c7" : tc.stairFill}
+                        stroke={isSelected ? selStroke : tc.stairStroke}
+                        strokeWidth={isSelected ? 2 : 1.5}
+                        cornerRadius={3}
+                    />
+                    {/* Stair lines */}
+                    {Array.from({ length: 4 }).map((_, i) => (
+                        <Line
+                            key={`stair-${el.id}-${i}`}
+                            points={[el.x + 4, el.y + 8 + i * 10, el.x + (el.width || 40) - 4, el.y + 8 + i * 10]}
+                            stroke={tc.stairStroke}
+                            strokeWidth={1}
+                        />
+                    ))}
+                    <Text x={el.x + 4} y={el.y + (el.height || 50) - 14}
+                        text={el.name || "Stairs"} fontSize={8} fill={tc.stairStroke}
+                        width={(el.width || 40) - 8} />
+                </Group>
+            );
+        case "elevator":
+            return (
+                <Group key={el.id} {...extraProps}>
+                    <Rect
+                        x={el.x} y={el.y}
+                        width={el.width || 35} height={el.height || 35}
+                        fill={isSelected ? "#ede9fe" : tc.elevFill}
+                        stroke={isSelected ? selStroke : tc.elevStroke}
+                        strokeWidth={isSelected ? 2 : 1.5}
+                        cornerRadius={3}
+                    />
+                    {/* Elevator arrows */}
+                    <Line
+                        points={[
+                            el.x + (el.width || 35) / 2, el.y + 6,
+                            el.x + (el.width || 35) / 2, el.y + (el.height || 35) - 6,
+                        ]}
+                        stroke={tc.elevStroke} strokeWidth={1.5}
+                    />
+                    <Line
+                        points={[
+                            el.x + (el.width || 35) / 2 - 4, el.y + 12,
+                            el.x + (el.width || 35) / 2, el.y + 6,
+                            el.x + (el.width || 35) / 2 + 4, el.y + 12,
+                        ]}
+                        stroke={tc.elevStroke} strokeWidth={1.5}
+                    />
+                    <Line
+                        points={[
+                            el.x + (el.width || 35) / 2 - 4, el.y + (el.height || 35) - 12,
+                            el.x + (el.width || 35) / 2, el.y + (el.height || 35) - 6,
+                            el.x + (el.width || 35) / 2 + 4, el.y + (el.height || 35) - 12,
+                        ]}
+                        stroke={tc.elevStroke} strokeWidth={1.5}
+                    />
+                </Group>
+            );
+        case "corridor":
+            return (
+                <Group key={el.id} {...extraProps}>
+                    <Rect
+                        x={el.x} y={el.y}
+                        width={el.width || 150} height={el.height || 30}
+                        fill={isSelected ? "#f1f5f9" : tc.corridorFill}
+                        stroke={isSelected ? selStroke : tc.corridorStroke}
+                        strokeWidth={isSelected ? 2 : 1}
+                        dash={[6, 3]}
+                        cornerRadius={2}
+                    />
+                    {el.name && (
+                        <Text x={el.x + 4} y={el.y + ((el.height || 30) - 10) / 2}
+                            text={el.name} fontSize={9} fill={tc.textSec}
+                            width={(el.width || 150) - 8} align="center" />
+                    )}
+                </Group>
+            );
+        case "label":
+            return (
+                <Text
+                    key={el.id}
+                    x={el.x} y={el.y}
+                    text={el.text || "Label"}
+                    fontSize={el.fontSize || 14}
+                    fontStyle="bold"
+                    fill={isSelected ? selStroke : (el.fill || tc.text)}
+                    {...extraProps}
+                />
+            );
+        default:
+            return null;
+    }
 }
 
 // ─── Floor Plan Editor (admin) ───
@@ -296,6 +430,8 @@ interface FloorPlanEditorProps {
     buildingId: string;
     floorNumber: number;
     buildingName: string;
+    buildingWidth?: number;
+    buildingHeight?: number;
     onSave: (plan: FloorPlan) => void;
     onClose: () => void;
 }
@@ -305,23 +441,108 @@ export function FloorPlanEditor({
     buildingId,
     floorNumber,
     buildingName,
+    buildingWidth,
+    buildingHeight,
     onSave,
     onClose,
 }: FloorPlanEditorProps) {
+    const { resolvedTheme } = useTheme();
+    const tc = THEME[resolvedTheme === "light" ? "light" : "dark"];
+
+    // Use building dimensions if provided, otherwise default to reasonable sizes
+    const planWidth = useMemo(() => {
+        if (initialFloorPlan?.width && initialFloorPlan.width !== 800) return initialFloorPlan.width;
+        if (buildingWidth && buildingWidth > 50) return Math.max(300, Math.round(buildingWidth * 2));
+        return 800;
+    }, [initialFloorPlan, buildingWidth]);
+
+    const planHeight = useMemo(() => {
+        if (initialFloorPlan?.height && initialFloorPlan.height !== 600) return initialFloorPlan.height;
+        if (buildingHeight && buildingHeight > 50) return Math.max(200, Math.round(buildingHeight * 2));
+        return 600;
+    }, [initialFloorPlan, buildingHeight]);
+
     const [elements, setElements] = useState<FloorElement[]>(initialFloorPlan?.elements || []);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [tool, setTool] = useState<ToolType>("select");
     const [scale, setScale] = useState(1);
-    const [planWidth] = useState(initialFloorPlan?.width || 800);
-    const [planHeight] = useState(initialFloorPlan?.height || 600);
+    const [offset, setOffset] = useState({ x: 0, y: 0 });
     const [saving, setSaving] = useState(false);
+    const [showGrid, setShowGrid] = useState(true);
     const containerRef = useRef<HTMLDivElement>(null);
-    const transformerRef = useRef<any>(null);
-    const selectedRef = useRef<any>(null);
+    const [dims, setDims] = useState({ w: 800, h: 600 });
+
+    // Wall drawing state
+    const [wallStart, setWallStart] = useState<{ x: number; y: number } | null>(null);
 
     const selectedElement = elements.find((e) => e.id === selectedId);
 
     const generateId = () => `el_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
+    // Auto-fit on first render
+    const didFitRef = useRef(false);
+
+    // Responsive canvas sizing
+    useEffect(() => {
+        const el = containerRef.current;
+        if (!el) return;
+        const obs = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+                setDims({ w: entry.contentRect.width, h: entry.contentRect.height });
+                // Auto-fit once on first resize
+                if (!didFitRef.current) {
+                    didFitRef.current = true;
+                    const cw = entry.contentRect.width;
+                    const ch = entry.contentRect.height;
+                    const sx = cw / (planWidth + 60);
+                    const sy = ch / (planHeight + 60);
+                    const s = Math.min(sx, sy, 2);
+                    setScale(s);
+                    setOffset({ x: (cw - planWidth * s) / 2, y: (ch - planHeight * s) / 2 });
+                }
+            }
+        });
+        obs.observe(el);
+        setDims({ w: el.clientWidth, h: el.clientHeight });
+        return () => obs.disconnect();
+    }, []);
+
+    // Keyboard shortcuts
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            const tag = (e.target as HTMLElement)?.tagName;
+            if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+            switch (e.key.toLowerCase()) {
+                case "v": setTool("select"); break;
+                case "r": setTool("room"); break;
+                case "w": setTool("wall"); break;
+                case "d": setTool("door"); break;
+                case "s": setTool("staircase"); break;
+                case "e": setTool("elevator"); break;
+                case "c": setTool("corridor"); break;
+                case "t": setTool("label"); break;
+                case "g": setShowGrid((v) => !v); break;
+                case "escape":
+                    setTool("select");
+                    setSelectedId(null);
+                    setWallStart(null);
+                    break;
+                case "delete":
+                case "backspace":
+                    if (selectedId) {
+                        setElements((prev) => prev.filter((el) => el.id !== selectedId));
+                        setSelectedId(null);
+                    }
+                    break;
+            }
+        };
+        window.addEventListener("keydown", handler);
+        return () => window.removeEventListener("keydown", handler);
+    }, [selectedId]);
+
+    // Snap to grid helper
+    const snap = useCallback((val: number) => Math.round(val / GRID_SIZE) * GRID_SIZE, []);
 
     // Handle stage click for creating elements
     const handleStageClick = useCallback((e: any) => {
@@ -329,12 +550,10 @@ export function FloorPlanEditor({
         const pos = stage.getPointerPosition();
         if (!pos) return;
 
-        // Adjust for scale
-        const x = pos.x / scale;
-        const y = pos.y / scale;
+        const x = snap((pos.x - offset.x) / scale);
+        const y = snap((pos.y - offset.y) / scale);
 
         if (tool === "select") {
-            // Deselect if clicking on empty area
             if (e.target === stage || e.target.attrs.name === "background") {
                 setSelectedId(null);
             }
@@ -343,75 +562,111 @@ export function FloorPlanEditor({
 
         const newId = generateId();
 
-        if (tool === "room") {
-            setElements((prev) => [
-                ...prev,
-                {
-                    id: newId,
-                    type: "room",
-                    x, y,
-                    width: 120,
-                    height: 80,
-                    fill: ROOM_COLORS.classroom,
-                    stroke: "#94a3b8",
-                    name: "New Room",
-                    roomType: "classroom",
-                    capacity: 30,
-                },
-            ]);
-            setSelectedId(newId);
-            setTool("select");
-        } else if (tool === "door") {
-            setElements((prev) => [
-                ...prev,
-                { id: newId, type: "door", x, y, width: 30, height: 6 },
-            ]);
-            setSelectedId(newId);
-            setTool("select");
-        } else if (tool === "furniture") {
-            const preset = FURNITURE_PRESETS[0];
-            setElements((prev) => [
-                ...prev,
-                {
-                    id: newId,
-                    type: "furniture",
-                    x, y,
-                    width: preset.width,
-                    height: preset.height,
-                    fill: preset.fill,
-                    stroke: preset.stroke,
-                    name: preset.name,
-                },
-            ]);
-            setSelectedId(newId);
-            setTool("select");
-        } else if (tool === "label") {
-            setElements((prev) => [
-                ...prev,
-                {
-                    id: newId,
-                    type: "label",
-                    x, y,
-                    text: "Label",
-                    fontSize: 14,
-                    fill: "#1e293b",
-                },
-            ]);
-            setSelectedId(newId);
-            setTool("select");
+        switch (tool) {
+            case "room":
+                setElements((prev) => [
+                    ...prev,
+                    {
+                        id: newId, type: "room", x, y,
+                        width: 120, height: 80,
+                        fill: ROOM_COLORS.classroom,
+                        stroke: ROOM_BORDERS.classroom,
+                        name: "New Room", roomType: "classroom", capacity: 30,
+                    },
+                ]);
+                setSelectedId(newId);
+                setTool("select");
+                break;
+            case "wall":
+                if (!wallStart) {
+                    setWallStart({ x, y });
+                } else {
+                    setElements((prev) => [
+                        ...prev,
+                        {
+                            id: newId, type: "wall", x: wallStart.x, y: wallStart.y,
+                            points: [wallStart.x, wallStart.y, x, y],
+                            stroke: tc.wallStroke,
+                        },
+                    ]);
+                    setWallStart(null);
+                    setSelectedId(newId);
+                }
+                break;
+            case "door":
+                setElements((prev) => [
+                    ...prev,
+                    { id: newId, type: "door", x, y, width: 30, height: 8 },
+                ]);
+                setSelectedId(newId);
+                setTool("select");
+                break;
+            case "staircase":
+                setElements((prev) => [
+                    ...prev,
+                    { id: newId, type: "staircase", x, y, width: 40, height: 50, name: "Stairs" },
+                ]);
+                setSelectedId(newId);
+                setTool("select");
+                break;
+            case "elevator":
+                setElements((prev) => [
+                    ...prev,
+                    { id: newId, type: "elevator", x, y, width: 35, height: 35, name: "Elevator" },
+                ]);
+                setSelectedId(newId);
+                setTool("select");
+                break;
+            case "corridor":
+                setElements((prev) => [
+                    ...prev,
+                    {
+                        id: newId, type: "corridor", x, y,
+                        width: 150, height: 30, name: "Corridor",
+                    },
+                ]);
+                setSelectedId(newId);
+                setTool("select");
+                break;
+            case "label":
+                setElements((prev) => [
+                    ...prev,
+                    { id: newId, type: "label", x, y, text: "Label", fontSize: 14, fill: tc.text },
+                ]);
+                setSelectedId(newId);
+                setTool("select");
+                break;
         }
-    }, [tool, scale]);
+    }, [tool, scale, offset, wallStart, snap, tc]);
 
     const updateElement = (id: string, updates: Partial<FloorElement>) => {
-        setElements((prev) =>
-            prev.map((el) => (el.id === id ? { ...el, ...updates } : el))
-        );
+        setElements((prev) => prev.map((el) => (el.id === id ? { ...el, ...updates } : el)));
     };
 
     const deleteElement = (id: string) => {
         setElements((prev) => prev.filter((el) => el.id !== id));
         setSelectedId(null);
     };
+
+    // Mouse wheel zoom
+    const handleWheel = useCallback((e: any) => {
+        e.evt.preventDefault();
+        const stage = e.target.getStage();
+        const pointer = stage.getPointerPosition();
+        if (!pointer) return;
+
+        const oldScale = scale;
+        const factor = e.evt.deltaY < 0 ? 1.08 : 0.92;
+        const newScale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, oldScale * factor));
+
+        const mx = pointer.x;
+        const my = pointer.y;
+        const newX = mx - ((mx - offset.x) / oldScale) * newScale;
+        const newY = my - ((my - offset.y) / oldScale) * newScale;
+
+        setScale(newScale);
+        setOffset({ x: newX, y: newY });
+    }, [scale, offset]);
 
     const handleSave = async () => {
         setSaving(true);
@@ -428,86 +683,102 @@ export function FloorPlanEditor({
         setSaving(false);
     };
 
+    const fitAll = useCallback(() => {
+        if (!containerRef.current) return;
+        const cw = containerRef.current.clientWidth;
+        const ch = containerRef.current.clientHeight;
+        const sx = cw / (planWidth + 40);
+        const sy = ch / (planHeight + 40);
+        const s = Math.min(sx, sy, 2);
+        setScale(s);
+        setOffset({ x: (cw - planWidth * s) / 2, y: (ch - planHeight * s) / 2 });
+    }, [planWidth, planHeight]);
+
+    // Element counts for status
+    const counts = useMemo(() => {
+        const c = { room: 0, wall: 0, door: 0, staircase: 0, elevator: 0, corridor: 0, label: 0 };
+        elements.forEach((el) => { if (el.type in c) c[el.type as keyof typeof c]++; });
+        return c;
+    }, [elements]);
+
     return (
-        <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed inset-0 z-50 flex bg-black/60 backdrop-blur-sm"
-        >
-            <div className="flex flex-1 m-4 rounded-2xl overflow-hidden shadow-2xl border bg-background">
+        <TooltipProvider delayDuration={200}>
+            <div className="fixed inset-0 z-50 flex" style={{ backgroundColor: tc.canvasBg }}>
                 {/* Left toolbar */}
-                <div className="w-14 flex flex-col items-center gap-1 py-3 border-r bg-muted/30 overflow-y-auto overflow-x-hidden">
+                <div className="w-12 flex flex-col items-center gap-1 py-3 border-r bg-background/80 backdrop-blur-sm">
                     {TOOLS.map((t) => {
                         const Icon = t.icon;
                         const isActive = tool === t.mode;
                         return (
-                            <button
-                                key={t.mode}
-                                className={`flex h-10 w-10 items-center justify-center rounded-lg transition-all ${isActive ? "bg-primary text-primary-foreground shadow-sm" : "hover:bg-muted text-muted-foreground"}`}
-                                onClick={() => setTool(t.mode)}
-                                title={t.label}
-                            >
-                                <Icon className="h-4 w-4" />
-                            </button>
+                            <Tooltip key={t.mode}>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        className={`flex h-9 w-9 items-center justify-center rounded-lg transition-all ${isActive
+                                            ? "bg-primary text-primary-foreground shadow-sm"
+                                            : "hover:bg-muted text-muted-foreground"
+                                            }`}
+                                        onClick={() => { setTool(t.mode); setWallStart(null); }}
+                                    >
+                                        <Icon className="h-4 w-4" />
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="right" className="text-xs">
+                                    {t.label} {t.shortcut && <kbd className="ml-1.5 px-1 py-0.5 bg-muted rounded text-[10px]">{t.shortcut}</kbd>}
+                                </TooltipContent>
+                            </Tooltip>
                         );
                     })}
 
                     <div className="flex-1" />
 
-                    {/* Furniture presets */}
-                    {tool === "furniture" && (
-                        <div className="flex flex-col gap-0.5">
-                            {FURNITURE_PRESETS.map((preset, i) => (
-                                <button
-                                    key={i}
-                                    className="flex h-8 w-10 items-center justify-center rounded text-[8px] font-medium hover:bg-muted"
-                                    title={preset.name}
-                                    onClick={() => {
-                                        const newId = generateId();
-                                        setElements((prev) => [
-                                            ...prev,
-                                            {
-                                                id: newId,
-                                                type: "furniture",
-                                                x: planWidth / 2 - preset.width / 2,
-                                                y: planHeight / 2 - preset.height / 2,
-                                                width: preset.width,
-                                                height: preset.height,
-                                                fill: preset.fill,
-                                                stroke: preset.stroke,
-                                                name: preset.name,
-                                            },
-                                        ]);
-                                        setSelectedId(newId);
-                                    }}
-                                >
-                                    <div
-                                        className="w-6 h-4 rounded-sm border"
-                                        style={{ backgroundColor: preset.fill, borderColor: preset.stroke }}
-                                    />
-                                </button>
-                            ))}
-                        </div>
-                    )}
+                    {/* Grid toggle */}
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                className={`flex h-9 w-9 items-center justify-center rounded-lg transition-all ${showGrid
+                                    ? "bg-accent text-accent-foreground"
+                                    : "text-muted-foreground hover:bg-muted"
+                                    }`}
+                                onClick={() => setShowGrid(!showGrid)}
+                            >
+                                <Grid3X3 className="h-4 w-4" />
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="text-xs">
+                            Toggle Grid <kbd className="ml-1.5 px-1 py-0.5 bg-muted rounded text-[10px]">G</kbd>
+                        </TooltipContent>
+                    </Tooltip>
                 </div>
 
-                {/* Canvas area */}
+                {/* Main area */}
                 <div className="flex-1 flex flex-col">
-                    {/* Header */}
-                    <div className="flex items-center justify-between px-4 py-2 border-b">
-                        <div>
-                            <h3 className="font-semibold text-sm">{buildingName} — Floor {floorNumber}</h3>
-                            <p className="text-xs text-muted-foreground">{elements.length} elements</p>
+                    {/* Header bar */}
+                    <div className="flex items-center justify-between px-4 py-2 border-b bg-background/80 backdrop-blur-sm">
+                        <div className="flex items-center gap-3">
+                            <div>
+                                <h3 className="font-semibold text-sm">{buildingName} — Floor {floorNumber}</h3>
+                                <p className="text-xs text-muted-foreground">
+                                    {counts.room} rooms · {counts.wall} walls · {planWidth}×{planHeight}px
+                                </p>
+                            </div>
+                            {/* Mode badge */}
+                            <Badge variant="outline" className="text-xs gap-1.5">
+                                <div className={`w-1.5 h-1.5 rounded-full ${tool === "select" ? "bg-green-500" : "bg-amber-500 animate-pulse"}`} />
+                                {tool === "select" ? "Select" : tool === "wall" && wallStart ? "Click end point..." : `Place: ${tool}`}
+                            </Badge>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setScale((s) => Math.min(3, s + 0.2))}>
+                        <div className="flex items-center gap-1.5">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setScale((s) => Math.min(MAX_ZOOM, s * 1.3))}>
                                 <ZoomIn className="h-4 w-4" />
                             </Button>
-                            <Badge variant="outline" className="text-xs">{Math.round(scale * 100)}%</Badge>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setScale((s) => Math.max(0.3, s - 0.2))}>
+                            <Badge variant="outline" className="text-xs min-w-[3.5rem] justify-center">{Math.round(scale * 100)}%</Badge>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setScale((s) => Math.max(MIN_ZOOM, s / 1.3))}>
                                 <ZoomOut className="h-4 w-4" />
                             </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={fitAll} title="Fit All">
+                                <RotateCcw className="h-4 w-4" />
+                            </Button>
+                            <div className="w-px h-6 bg-border mx-1" />
                             <Button variant="default" size="sm" className="gap-1.5" onClick={handleSave} disabled={saving}>
                                 <Save className="h-3.5 w-3.5" />
                                 {saving ? "Saving..." : "Save"}
@@ -518,147 +789,110 @@ export function FloorPlanEditor({
                         </div>
                     </div>
 
+                    {/* Keyboard shortcut bar */}
+                    <div className="hidden md:flex items-center justify-center py-1 border-b bg-background/60 backdrop-blur-sm">
+                        <span className="text-[10px] text-muted-foreground font-mono">
+                            V select · R room · W wall · D door · S stairs · E elevator · C corridor · T label · G grid · Esc cancel · Del delete
+                        </span>
+                    </div>
+
                     {/* Stage */}
-                    <div ref={containerRef} className="flex-1 bg-white overflow-hidden">
+                    <div
+                        ref={containerRef}
+                        className="flex-1 overflow-hidden"
+                        style={{
+                            backgroundColor: tc.canvasBg,
+                            cursor: tool === "select" ? "default" : tool === "wall" && wallStart ? "crosshair" : "crosshair",
+                        }}
+                    >
                         <Stage
-                            width={containerRef.current?.clientWidth || planWidth}
-                            height={containerRef.current?.clientHeight || planHeight}
+                            width={dims.w}
+                            height={dims.h}
                             scaleX={scale}
                             scaleY={scale}
+                            x={offset.x}
+                            y={offset.y}
                             onClick={handleStageClick}
                             onTap={handleStageClick}
+                            onWheel={handleWheel}
+                            draggable={tool === "select"}
+                            onDragEnd={(e) => {
+                                if (tool === "select") {
+                                    setOffset({ x: e.target.x(), y: e.target.y() });
+                                }
+                            }}
                         >
                             <KonvaLayer>
                                 {/* Background */}
                                 <Rect
                                     name="background"
-                                    x={0}
-                                    y={0}
+                                    x={0} y={0}
                                     width={planWidth}
                                     height={planHeight}
-                                    fill="#fafafa"
+                                    fill={tc.canvasBg}
+                                    stroke={tc.gridMajor}
+                                    strokeWidth={2}
                                 />
 
                                 {/* Grid */}
-                                {Array.from({ length: Math.ceil(planWidth / 50) + 1 }).map((_, i) => (
+                                {showGrid && (
+                                    <>
+                                        {Array.from({ length: Math.ceil(planWidth / GRID_SIZE) + 1 }).map((_, i) => (
+                                            <Line
+                                                key={`gv-${i}`}
+                                                points={[i * GRID_SIZE, 0, i * GRID_SIZE, planHeight]}
+                                                stroke={i % 4 === 0 ? tc.gridMajor : tc.gridMinor}
+                                                strokeWidth={i % 4 === 0 ? 1 : 0.5}
+                                            />
+                                        ))}
+                                        {Array.from({ length: Math.ceil(planHeight / GRID_SIZE) + 1 }).map((_, i) => (
+                                            <Line
+                                                key={`gh-${i}`}
+                                                points={[0, i * GRID_SIZE, planWidth, i * GRID_SIZE]}
+                                                stroke={i % 4 === 0 ? tc.gridMajor : tc.gridMinor}
+                                                strokeWidth={i % 4 === 0 ? 1 : 0.5}
+                                            />
+                                        ))}
+                                    </>
+                                )}
+
+                                {/* Wall preview line (while drawing) */}
+                                {wallStart && (
                                     <Line
-                                        key={`gv-${i}`}
-                                        points={[i * 50, 0, i * 50, planHeight]}
-                                        stroke="#e2e8f0"
-                                        strokeWidth={0.5}
+                                        points={[wallStart.x, wallStart.y, wallStart.x, wallStart.y]}
+                                        stroke={tc.selStroke}
+                                        strokeWidth={3}
+                                        dash={[6, 4]}
+                                        opacity={0.6}
                                     />
-                                ))}
-                                {Array.from({ length: Math.ceil(planHeight / 50) + 1 }).map((_, i) => (
-                                    <Line
-                                        key={`gh-${i}`}
-                                        points={[0, i * 50, planWidth, i * 50]}
-                                        stroke="#e2e8f0"
-                                        strokeWidth={0.5}
-                                    />
-                                ))}
+                                )}
 
                                 {/* Elements */}
                                 {elements.map((el) => {
                                     const isSelected = el.id === selectedId;
-
-                                    switch (el.type) {
-                                        case "room":
-                                            return (
-                                                <Group
-                                                    key={el.id}
-                                                    draggable={tool === "select"}
-                                                    onClick={() => setSelectedId(el.id)}
-                                                    onDragEnd={(e) => {
-                                                        updateElement(el.id, {
-                                                            x: e.target.x(),
-                                                            y: e.target.y(),
-                                                        });
-                                                    }}
-                                                >
-                                                    <Rect
-                                                        x={el.x}
-                                                        y={el.y}
-                                                        width={el.width || 100}
-                                                        height={el.height || 80}
-                                                        fill={el.fill || ROOM_COLORS[el.roomType || "classroom"]}
-                                                        stroke={isSelected ? "#3b82f6" : (el.stroke || "#94a3b8")}
-                                                        strokeWidth={isSelected ? 2 : 1.5}
-                                                        cornerRadius={2}
-                                                    />
-                                                    {el.name && (
-                                                        <Text
-                                                            x={el.x + 4}
-                                                            y={el.y + 4}
-                                                            text={el.name}
-                                                            fontSize={11}
-                                                            fontStyle="bold"
-                                                            fill="#1e293b"
-                                                            width={(el.width || 100) - 8}
-                                                        />
-                                                    )}
-                                                    {el.capacity && (
-                                                        <Text
-                                                            x={el.x + 4}
-                                                            y={el.y + (el.height || 80) - 16}
-                                                            text={`${el.capacity} seats`}
-                                                            fontSize={9}
-                                                            fill="#64748b"
-                                                        />
-                                                    )}
-                                                </Group>
-                                            );
-                                        case "door":
-                                            return (
-                                                <Rect
-                                                    key={el.id}
-                                                    x={el.x}
-                                                    y={el.y}
-                                                    width={el.width || 30}
-                                                    height={el.height || 6}
-                                                    fill={isSelected ? "#bfdbfe" : "#f1f5f9"}
-                                                    stroke={isSelected ? "#3b82f6" : "#94a3b8"}
-                                                    strokeWidth={1}
-                                                    draggable={tool === "select"}
-                                                    onClick={() => setSelectedId(el.id)}
-                                                    onDragEnd={(e) => updateElement(el.id, { x: e.target.x(), y: e.target.y() })}
-                                                />
-                                            );
-                                        case "furniture":
-                                            return (
-                                                <Rect
-                                                    key={el.id}
-                                                    x={el.x}
-                                                    y={el.y}
-                                                    width={el.width || 40}
-                                                    height={el.height || 30}
-                                                    fill={el.fill || "#f59e0b20"}
-                                                    stroke={isSelected ? "#3b82f6" : (el.stroke || "#f59e0b")}
-                                                    strokeWidth={isSelected ? 2 : 1}
-                                                    cornerRadius={3}
-                                                    rotation={el.rotation || 0}
-                                                    draggable={tool === "select"}
-                                                    onClick={() => setSelectedId(el.id)}
-                                                    onDragEnd={(e) => updateElement(el.id, { x: e.target.x(), y: e.target.y() })}
-                                                />
-                                            );
-                                        case "label":
-                                            return (
-                                                <Text
-                                                    key={el.id}
-                                                    x={el.x}
-                                                    y={el.y}
-                                                    text={el.text || "Label"}
-                                                    fontSize={el.fontSize || 14}
-                                                    fontStyle="bold"
-                                                    fill={isSelected ? "#3b82f6" : (el.fill || "#1e293b")}
-                                                    draggable={tool === "select"}
-                                                    onClick={() => setSelectedId(el.id)}
-                                                    onDragEnd={(e) => updateElement(el.id, { x: e.target.x(), y: e.target.y() })}
-                                                />
-                                            );
-                                        default:
-                                            return null;
-                                    }
+                                    const interactiveProps = {
+                                        draggable: tool === "select",
+                                        onClick: (evt: any) => { evt.cancelBubble = true; setSelectedId(el.id); },
+                                        onDragEnd: (evt: any) => {
+                                            if (el.type === "wall" && el.points) {
+                                                const dx = evt.target.x();
+                                                const dy = evt.target.y();
+                                                const newPoints = el.points.map((p, i) => i % 2 === 0 ? p + dx : p + dy);
+                                                updateElement(el.id, {
+                                                    x: snap(newPoints[0]),
+                                                    y: snap(newPoints[1]),
+                                                    points: newPoints.map((p) => snap(p)),
+                                                });
+                                                evt.target.position({ x: 0, y: 0 });
+                                            } else {
+                                                updateElement(el.id, {
+                                                    x: snap(evt.target.x()),
+                                                    y: snap(evt.target.y()),
+                                                });
+                                            }
+                                        },
+                                    };
+                                    return renderElement(el, isSelected, tc, interactiveProps);
                                 })}
                             </KonvaLayer>
                         </Stage>
@@ -670,14 +904,17 @@ export function FloorPlanEditor({
                     {selectedElement && (
                         <motion.div
                             initial={{ width: 0, opacity: 0 }}
-                            animate={{ width: 260, opacity: 1 }}
+                            animate={{ width: 250, opacity: 1 }}
                             exit={{ width: 0, opacity: 0 }}
-                            className="border-l bg-muted/20 overflow-hidden"
+                            className="border-l bg-background/95 backdrop-blur-sm overflow-hidden flex flex-col"
                         >
-                            <ScrollArea className="h-full">
-                                <div className="p-4 w-[260px]">
+                            <ScrollArea className="flex-1 min-h-0">
+                                <div className="p-4 w-[250px]">
                                     <div className="flex items-center justify-between mb-4">
-                                        <h4 className="font-semibold text-sm capitalize">{selectedElement.type}</h4>
+                                        <div>
+                                            <h4 className="font-semibold text-sm capitalize">{selectedElement.type}</h4>
+                                            <p className="text-[10px] text-muted-foreground font-mono">{selectedElement.id.slice(0, 12)}</p>
+                                        </div>
                                         <div className="flex gap-1">
                                             <Button
                                                 variant="destructive"
@@ -691,17 +928,18 @@ export function FloorPlanEditor({
                                     </div>
 
                                     <div className="space-y-3">
-                                        {/* Name */}
-                                        {(selectedElement.type === "room" || selectedElement.type === "furniture") && (
-                                            <div>
-                                                <Label className="text-xs">Name</Label>
-                                                <Input
-                                                    value={selectedElement.name || ""}
-                                                    onChange={(e) => updateElement(selectedElement.id, { name: e.target.value })}
-                                                    className="h-8 text-sm"
-                                                />
-                                            </div>
-                                        )}
+                                        {/* Name (for rooms, staircases, elevators, corridors) */}
+                                        {(selectedElement.type === "room" || selectedElement.type === "staircase" ||
+                                            selectedElement.type === "elevator" || selectedElement.type === "corridor") && (
+                                                <div>
+                                                    <Label className="text-xs">Name</Label>
+                                                    <Input
+                                                        value={selectedElement.name || ""}
+                                                        onChange={(e) => updateElement(selectedElement.id, { name: e.target.value })}
+                                                        className="h-8 text-sm"
+                                                    />
+                                                </div>
+                                            )}
 
                                         {/* Label text */}
                                         {selectedElement.type === "label" && (
@@ -724,20 +962,18 @@ export function FloorPlanEditor({
                                                     onValueChange={(v) => updateElement(selectedElement.id, {
                                                         roomType: v,
                                                         fill: ROOM_COLORS[v] || ROOM_COLORS.classroom,
+                                                        stroke: ROOM_BORDERS[v] || ROOM_BORDERS.classroom,
                                                     })}
                                                 >
                                                     <SelectTrigger className="h-8 text-sm">
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="classroom">Classroom</SelectItem>
-                                                        <SelectItem value="lab">Lab</SelectItem>
-                                                        <SelectItem value="office">Office</SelectItem>
-                                                        <SelectItem value="library">Library</SelectItem>
-                                                        <SelectItem value="seminar_hall">Seminar Hall</SelectItem>
-                                                        <SelectItem value="restroom">Restroom</SelectItem>
-                                                        <SelectItem value="storage">Storage</SelectItem>
-                                                        <SelectItem value="corridor">Corridor</SelectItem>
+                                                        {Object.keys(ROOM_COLORS).filter(k => k !== "corridor").map((key) => (
+                                                            <SelectItem key={key} value={key}>
+                                                                {key.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                                                            </SelectItem>
+                                                        ))}
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -752,12 +988,13 @@ export function FloorPlanEditor({
                                                     value={selectedElement.capacity || 0}
                                                     onChange={(e) => updateElement(selectedElement.id, { capacity: parseInt(e.target.value) || 0 })}
                                                     className="h-8 text-sm"
+                                                    min={0}
                                                 />
                                             </div>
                                         )}
 
                                         {/* Dimensions */}
-                                        {selectedElement.width !== undefined && (
+                                        {selectedElement.width !== undefined && selectedElement.type !== "wall" && (
                                             <div className="grid grid-cols-2 gap-2">
                                                 <div>
                                                     <Label className="text-xs">Width</Label>
@@ -784,19 +1021,11 @@ export function FloorPlanEditor({
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
                                                 <Label className="text-xs text-muted-foreground">X</Label>
-                                                <Input
-                                                    value={Math.round(selectedElement.x)}
-                                                    className="h-7 text-xs font-mono"
-                                                    readOnly
-                                                />
+                                                <Input value={Math.round(selectedElement.x)} className="h-7 text-xs font-mono" readOnly />
                                             </div>
                                             <div>
                                                 <Label className="text-xs text-muted-foreground">Y</Label>
-                                                <Input
-                                                    value={Math.round(selectedElement.y)}
-                                                    className="h-7 text-xs font-mono"
-                                                    readOnly
-                                                />
+                                                <Input value={Math.round(selectedElement.y)} className="h-7 text-xs font-mono" readOnly />
                                             </div>
                                         </div>
 
@@ -809,8 +1038,7 @@ export function FloorPlanEditor({
                                                     value={selectedElement.fontSize || 14}
                                                     onChange={(e) => updateElement(selectedElement.id, { fontSize: parseInt(e.target.value) || 14 })}
                                                     className="h-8 text-sm"
-                                                    min={8}
-                                                    max={48}
+                                                    min={8} max={48}
                                                 />
                                             </div>
                                         )}
@@ -821,6 +1049,6 @@ export function FloorPlanEditor({
                     )}
                 </AnimatePresence>
             </div>
-        </motion.div>
+        </TooltipProvider>
     );
 }

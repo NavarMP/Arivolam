@@ -226,9 +226,9 @@ export function MapPropertyPanel({
                 animate={{ x: 0 }}
                 exit={{ x: "100%" }}
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                className="absolute right-0 top-0 bottom-0 z-[1002] w-72 border-l bg-background/95 backdrop-blur-sm shadow-2xl"
+                className="absolute right-0 top-0 bottom-0 z-[1002] w-72 border-l bg-background/95 backdrop-blur-sm shadow-2xl flex flex-col"
             >
-                <ScrollArea className="h-full">
+                <ScrollArea className="flex-1 min-h-0">
                     <div className="p-4">
                         {/* Header */}
                         <div className="flex items-center justify-between mb-4">

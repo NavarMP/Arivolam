@@ -1,12 +1,12 @@
-# Campusolam ERP Presentation (Max 10 Slides)
+# Arivolam Presentation (Max 10 Slides)
 
 *Note: Use PowerPoint or Canva to build these slides. Keep visuals high, text low.*
 
 ---
 
 ## Slide 1: Title Slide
-*   **Title:** Campusolam: Next-Generation Educational Resource Planning
-*   **Subtitle:** SAFI Institute of Advanced Study
+*   **Title:** Arivolam: The Horizon of Learning
+*   **Subtitle:** Unified Campus Social Platform & ERP
 *   **Batch:** BCA 2023–26
 *   **Team Members:** [Your Names]
 *   **Project Guide:** [Guide's Name]
@@ -14,27 +14,25 @@
 ---
 
 ## Slide 2: Introduction & Problem Statement
-*   **The Problem:** Traditional campus management relies on fragmented systems, spreadsheets, or paper records, leading to inefficiencies, data silos, and delayed communication between faculty and students.
-*   **The Solution:** An integrated, real-time web platform that centralizes attendance, academics, and campus navigation.
+*   **The Problem (Digital Fragmentation):** Modern educational institutions use multiple disconnected systems (one for exams, one for assignments, informal WhatsApp groups for social communication), leading to data silos and user frustration.
+*   **The Solution:** Arivolam — An all-in-one platform integrating an academic social platform (Ariv Social) with a robust campus management system (Campusolam ERP).
 
 ---
 
 ## Slide 3: Project Objectives
-*   Develop a role-based access system (Dev-Admin, Admin, Faculty, Student).
-*   Digitize and streamline attendance tracking and marks entry.
-*   Provide an intuitive, real-time dashboard for students to monitor academic progress.
-*   Implement an interactive campus map for seamless navigation.
+*   Develop a role-based access system spanning social networking and campus administration.
+*   Provide personalized feeds for Academic networking and community building (Ariv Social).
+*   Digitize and streamline attendance tracking and marks entry (Campusolam).
+*   Implement an interactive campus map for seamless physical navigation.
 
 ---
 
 ## Slide 4: Proposed System Overview
 *   **Unified Ecosystem:** One platform acting as the single source of truth for the institution.
-*   **Modules:**
-    *   *Dev-Admin Management Dashboard*
-    *   *Administrative Control Panel*
-    *   *Faculty Academics Manager*
-    *   *Student Performance Tracker*
-    *   *Interactive spatial map*
+*   **Primary Initiatives:**
+    1.  *Ariv Social:* Community building, academic posts, and institutional networking.
+    2.  *Campusolam:* ERP, timetable management, and examination tracking.
+    3.  *Campus Explore:* Interactive spatial GIS map.
 
 ---
 
@@ -47,33 +45,34 @@
 
 ---
 
-## Slide 6: Key Features (Dev-Admin, Admin & Faculty)
-*   **Dev-Admin:** Superuser access for global platform configuration and environment management.
-*   **Admin:** Complete oversight over user management, campus mapping elements, and system configurations.
-*   **Faculty:** Simplified interface to mark daily attendance and input examination marks, reducing administrative overhead.
+## Slide 6: Key Features & User Roles
+*   **Common User (Dev-Admin/Public):** Superuser controls or public feed browsing.
+*   **Ariv Social (Personal/Institution):** Building profiles, academic sharing, and community engagement.
+*   **Campusolam (Admin/Faculty/Student):** Configuration controls, real-time attendance marking, and real-time academic dashboards.
 
 ---
 
-## Slide 7: Key Features (Student Experience)
-*   **Real-time Updates:** Instant visibility of attendance shortages and newly published grades.
-*   **Interactive Campus:** Explore campus facilities and building details directly from the app without a physical guide.
-
----
-
-## Slide 8: Implementation Details & Testing
+## Slide 7: Implementation Details & Testing
 *   **Implementation:** Developed using agile methodologies, responsive design paradigms, and secure server-side fetching.
 *   **Testing:** Conducted unit testing for database security rules, UI/UX testing across mobile and desktop devices, and integration testing for authentication flows.
 
 ---
 
+## Slide 8: Architectural Challenges & Compromises
+*   **The Merged Platform Challenge:** Combining an open social platform with a highly secure ERP within one application creates complex user flow handling and strict database security compromises.
+*   **The Future Pivot:** Splitting Ariv Social and Campusolam into specific micro-applications to maximize enterprise-level isolation.
+
+---
+
 ## Slide 9: Future Enhancements
-*   Implementation of an AI-based chatbot for quick student queries.
-*   Integration with a payment gateway for direct fee management.
-*   **3D Campus Navigation:** Interactive 3D maps and building walk-throughs.
-*   **AR/VR Immersive Tours:** Virtual reality and augmented reality experiences.
+*   3D, AR/VR navigation mapping.
+*   Automatic attendance system using RFID and sensors.
+*   Maximum possible language support using AI (i18n).
+*   AI-based insights and analysis (LMS).
+*   Payment gateway and in-app payments.
 
 ---
 
 ## Slide 10: Conclusion & Q&A
-*   **Summary:** Campusolam significantly bridges the gap between students and administration, transforming a traditional campus into a smart digital campus.
+*   **Summary:** Arivolam bridges the gap between students, educators, and administration, transforming a fragmented digital campus into a unified smart ecosystem.
 *   *Thank You! Questions?*

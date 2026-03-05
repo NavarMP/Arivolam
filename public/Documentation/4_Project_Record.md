@@ -4,7 +4,7 @@
 ---
 
 <div align="center">
-  <h1>CAMPUSOLAM: NEXT-GENERATION EDUCATIONAL RESOURCE PLANNING</h1>
+  <h1>ARIVOLAM: UNIFIED CAMPUS SOCIAL PLATFORM & ERP</h1>
   <br/><br/>
   <p>Submitted by:</p>
   <h3>[Your Name]</h3>
@@ -29,7 +29,7 @@
   <h2>EXAMINATION CERTIFICATE</h2>
 </div>
 <br/>
-<p>This is to certify that the project entitled <b>"CAMPUSOLAM: NEXT-GENERATION EDUCATIONAL RESOURCE PLANNING"</b> is a bonafide record of the work done by <b>[Your Name]</b> (Reg No: [Your Reg No]) of the Department of Computer Applications, SAFI Institute of Advanced Study, during the academic year 2023-2026, in partial fulfillment of the requirements for the award of the Degree of Bachelor of Computer Applications.</p>
+<p>This is to certify that the project entitled <b>"ARIVOLAM: UNIFIED CAMPUS SOCIAL PLATFORM & ERP"</b> is a bonafide record of the work done by <b>[Your Name]</b> (Reg No: [Your Reg No]) of the Department of Computer Applications, SAFI Institute of Advanced Study, during the academic year 2023-2026, in partial fulfillment of the requirements for the award of the Degree of Bachelor of Computer Applications.</p>
 <br/><br/>
 <p><b>Head of the Department</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>Project Guide</b></p>
 <br/><br/>
@@ -60,10 +60,10 @@
 </div>
 <br/>
 <p><b>Domain:</b> Web Development / Educational Technology / Cloud Software</p>
-<p><b>Problem Solved:</b> Traditional campus administration operations, specifically attendance tracking and marks entry, are heavily reliant on manual ledger systems or rigid legacy solutions. These methods are prone to data silos, delays in communication between students and faculty, and human error. Additionally, physical campus navigation remains a challenge for newcomers without digitized, interactive maps.</p>
+<p><b>Problem Solved:</b> Educational institutions suffer from severe digital fragmentation. The use of separate, disconnected systems for academics, social interaction, and navigation creates data silos and user frustration. Arivolam bridges this gap by unifying an academic networking platform (Ariv Social) with a resilient campus management system (Campusolam ERP).</p>
 <p><b>Tools & Technologies Used:</b> The platform is built on modern web-scale technologies. The frontend utilizes <b>Next.js (React 19)</b> and Tailwind CSS for optimized server-side rendering and responsive design. The backend logic and database are handled by <b>Supabase</b> (managed PostgreSQL) implementing Row Level Security (RLS). Mapping capabilities are powered by <b>Leaflet.js</b> and React-Leaflet along with Turf.js for spatial GIS boundaries.</p>
-<p><b>Implementation Summary:</b> "Campusolam ERP" establishes a four-tier, role-based architecture: Dev-Admins, Admins, Faculty, and Students. Supabase handles authentication and direct, secure database queries. Faculty members are provided with an intuitive interface to log attendance and grade marks matching the college curriculum. These records instantly reflect in the student dashboard in real-time. For spatial awareness, an interactive campus map was digitized to highlight building coordinates dynamically.</p>
-<p><b>Key Outcomes:</b> The implementation successfully digitizes core academic operations resulting in a centralized, highly secure database system. The Next.js routing reduces load latencies to sub-200ms. Administrative overhead is drastically reduced, data transparency is established between stakeholders, and the institution is positioned as a modern, digitally connected ecosystem ready for future 3D and AR/VR integration.</p>
+<p><b>Implementation Summary:</b> Arivolam establishes a multi-tenant, role-based architecture. For social features (Ariv Social), it caters to Personal and Institution accounts for community building. For academic features (Campusolam), it provides specific interfaces for Admins, Faculty, and Students. Supabase handles authentication and direct, secure database queries. For spatial awareness, an interactive campus map was digitized to highlight building coordinates dynamically.</p>
+<p><b>Key Outcomes:</b> The implementation successfully merges core academic operations with institutional networking. The Next.js routing reduces load latencies to sub-200ms. Though merging distinct domains into one app presented architectural and security compromises, the unified ecosystem greatly enhances user experience while positioning the institution as a digitally connected, smart campus ready for future AI and AR integrations.</p>
 
 ---
 
@@ -114,37 +114,37 @@
 # CHAPTER 1: INTRODUCTION
 
 **1.1 PROBLEM STATEMENT**
-Educational institutions continuously face the challenge of managing voluminous academic records securely and efficiently. Currently, processes like attendance marking, internal exam grading, and schedule tracking are frequently localized on spreadsheets or completely offline in physical ledgers. This lack of a unified digital repository significantly hinders the rapid retrieval of data, creates administrative bottlenecks, and prevents students from obtaining real-time feedback regarding their academic standings and attendance shortages.
+Educational institutions continuously face the challenge of managing voluminous academic records and vibrant student communities simultaneously. The core problem is *digital fragmentation*. Students and faculty are forced to use completely disconnected systems: an LMS for assignments, a rigid ERP portal for attendance, informal messaging groups (like WhatsApp) for social announcements, and static PDF files for campus maps. This lack of a unified digital repository significantly hinders the rapid retrieval of data, creates administrative bottlenecks, and fragments the institution's digital identity.
 
 **1.2 PROJECT MOTIVATION**
-The motivation for Campusolam was derived from the necessity to modernize the educational ecosystem by bringing modern software engineering principles to academic administration. Campus management shouldn't feel like a chore; it should be intuitive, fast, and transparent. The goal is to develop a tool that seamlessly integrates into the daily lives of faculty and students, promoting a digital-first approach to learning and administration.
+The motivation for Arivolam was derived from the necessity to modernize the educational ecosystem by bringing modern software engineering principles to academic administration and community building. The goal is to develop a tool that seamlessly integrates into the daily lives of faculty and students, promoting a digital-first approach to learning, socializing, and administration.
 
 **1.3 OBJECTIVES**
-- To engineer a highly responsive, role-based web application providing personalized dashboards for Dev-Admins, Administrators, Faculty, and Students.
+- To engineer a highly responsive, role-based web application intertwining an academic social network (Ariv Social) and an ERP system (Campusolam).
 - To digitize and automate the lifecycle of student attendance logging and academic grades computation.
-- To implement strict database security using Row-Level Security (RLS) ensuring immutable data boundaries across roles.
+- To implement database security using Row-Level Security (RLS) to manage the complex boundaries between open social feeds and secure academic records.
 - To provide an interactive, GIS-enabled digital campus map facilitating accessible campus navigation.
 
 **1.4 SCOPE**
-The primary scope of Campusolam ERP encompasses attendance tracking, internal examinations grading, module distribution, and interactive spatial campus mappings. The system explicitly excludes financial ledger processing, HR payroll integrations, and external university exam portal integrations, to maintain focus strictly on the immediate campus academic lifecycle.
+The primary scope of Arivolam encompasses academic networking, profile management, attendance tracking, internal examinations grading, and interactive spatial campus mappings. The system explicitly excludes financial ledger processing and external university exam portal integrations, to maintain focus strictly on the immediate campus academic and social lifecycle.
 
 ---
 
 # CHAPTER 2: SYSTEM ANALYSIS
 
 **2.1 EXISTING SYSTEM**
-The existing infrastructure across average educational setups involves either manual paperwork or reliance on disparate software systems. Some institutions utilize legacy portals developed over a decade ago without mobile-responsive behaviors, while others use a mix of Google Forms, Excel sheets, and WhatsApp groups for day-to-day announcements. 
+The existing infrastructure across average educational setups involves disconnected software systems. Institutions use a mix of Google Forms, Excel sheets, rigid ERPs tailored solely for administration, and informal localized social apps for day-to-day announcements. 
 
-In the broader market, solutions like **Embase Pro Suite (egov.embase.in)** and **Moodle (moodle.com)** are present. Moodle acts as a heavy Learning Management System prioritizing virtual coursework over campus management, while Embase Pro Suite provides an ERP that is heavily focused on clerical administration rather than student experience.
+In the broader market, solutions like **Embase Pro Suite** and **Moodle** are present. Moodle acts as a heavy Learning Management System prioritizing virtual coursework over campus management, while Embase Pro Suite provides an ERP that is heavily focused on clerical administration rather than student experience. Neither system provides integrated social networking or spatial mapping.
 
 **2.2 PROBLEMS / LIMITATIONS IN CURRENT SOLUTIONS**
 - **Data Fragmentation:** Absence of a centralized data lake means compiling reports requires manual consolidation from various platforms.
-- **Legacy UI/UX:** Existing systems like Moodle have high learning curves and outdated designs, while Embase struggles with delivering highly-engaging, real-time feedback.
-- **High Deployment Overheads:** Complex, monolithic legacy systems demand massive server setups and high maintenance costs.
+- **Complete Feature Disconnect:** Existing tools ignore the social networking needs of a 21st-century campus, separating the academic from the extra-curricular.
+- **Legacy UI/UX:** Existing systems like Moodle have high learning curves and outdated designs.
 - **Absence of Spatial Awareness:** None of the existing academic ERPs natively integrate physical campus mappings to assist physical navigation.
 
 **2.3 PROPOSED SOLUTION**
-Campusolam addresses these gaps by offering a lightweight, hyper-fast ERP built on a Next.js Server-Side platform. It acts as a single, centralized truth source storing class schedules, attendance arrays, and GIS maps natively. By deploying on edge networks, the application guarantees sub-second load times while Supabase's PostgreSQL backend ensures iron-clad data relationships.
+Arivolam addresses these gaps by offering a lightweight, hyper-fast platform built on a Next.js Server-Side foundation. It acts as a single, centralized truth source storing social posts, class schedules, attendance arrays, and GIS maps natively. By deploying on edge networks, the application guarantees sub-second load times while Supabase's PostgreSQL backend handles the complex relationships between the different user layers.
 
 **2.4 FEASIBILITY STUDY**
 - **Technical Feasibility:** The system is technically sound. All tools employed (Next.js, Supabase, Tailwind, Leaflet) are battle-tested, highly supported open-source/cloud technologies. The learning curve for development is managed well through comprehensive documentation.
@@ -164,11 +164,13 @@ graph TD
     A[Client Browser / Mobile View] -->|Next.js App Router| B(Next.js Server Instance)
     B -->|SSR Data Fetching| C{Supabase Auth}
     C -->|Session Token| D[Role Middleware]
+    D -->|Ariv Social| K(Social Feed API)
     D -->|Faculty Actions| E(Attendance/Marks API)
     D -->|Student Actions| F(Read-Only Dashboard)
     D -->|Admin Actions| G(Configuration API)
     D -->|Dev-Admin Actions| J(Global Platform Config API)
-    E --> H[(PostgreSQL Database)]
+    K --> H[(PostgreSQL Database)]
+    E --> H
     F --> H
     G --> H
     J --> H
@@ -178,8 +180,10 @@ graph TD
 **3.2 DATA FLOW DIAGRAM (DFD - LEVEL 1)**
 ```mermaid
 graph LR
+    User[Social User] -->|Posts Update| Process0(Feed Processor)
+    Process0 --> DB[(PostgreSQL)]
     Faculty[Faculty Node] -->|Submits Attendance| Process1(Attendance Processor)
-    Process1 -->|Records via RPC| DB[(PostgreSQL)]
+    Process1 -->|Records via RPC| DB
     DB -->|Fetches Array| Process2(Student View Generator)
     Process2 -->|Real-time Metrics| Student[Student Node]
     Admin[Admin Node] -->|Generates Timetable| DB
@@ -238,6 +242,7 @@ The execution of Campusolam returned highly satisfactory operational parameters.
 - **Pattern Discovered:** SSR (Server-Side Rendering) entirely bypassed frontend loading spinners, delivering a significant boost in perceptual speed for end-users compared to standard Single Page Applications (SPAs).
 
 **6.2 LIMITATIONS AND ISSUES**
+- **Architectural Security Conflict:** Because Ariv Social (open communities) and Campusolam (strict ERP) are currently combined into one application, it forces complex user login management and a necessary slight compromise on zero-trust enterprise-level security isolation to accommodate overlapping data points. The future scope requires stripping this into two separate platforms executing through secure microservice APIs.
 - **Offline Limitations:** Currently, the Next.js setup does not implement full Service Worker (PWA) caching for heavy database reads, meaning network loss completely halts application accessibility.
 - **Spatial Limits:** The interactive map cannot currently guide users indoors natively without deploying external BLE (Bluetooth Low Energy) beacons.
 
@@ -246,20 +251,20 @@ The execution of Campusolam returned highly satisfactory operational parameters.
 # CHAPTER 7: FUTURE ENHANCEMENTS
 
 **7.1 FEATURE UPGRADES**
-- **IoT Hardware Integration:** Bridging the software ERP with hardware by deploying ESP32 microcontrollers and RFID scanners at lab entrances to auto log attendance directly to Supabase via edge APIs.
-- **Predictive Analytics Engine:** Feeding longitudinal marks and attendance datasets into a Machine Learning pipeline to construct a dashboard warning administrators of students exhibiting drop-out behavioral indicators.
-- **3D Campus Navigation:** Upgrading the 2D spatial map to an interactive 3D environment allowing building walk-throughs and detailed wayfinding.
-- **AR/VR Immersive Tours:** Facilitating virtual reality campus tours and augmented reality classrooms to provide an immersive remote learning and exploration experience.
+- **3D Campus Navigation:** Interactive 3D maps and AR/VR immersive tours for seamless navigation and visualization.
+- **Hardware Integration:** Automatic attendance systems using RFID and physical sensors for students and faculties.
+- **Internationalization (i18n):** Maximum possible language support augmented by AI to cater to diverse student demographics.
+- **AI-Based Insights (LMS):** Deep learning to analyze student performance metrics and predict dropout risks or provide personalized study plans.
+- **In-App Payment Gateway:** Integrating gateways directly into the unified dashboard for immediate clearance of semester fees and event registrations.
 
-**7.2 SCALING AND CLOUD DEPLOYMENT**
-- **Microservices Shift:** As the institution grows, separating the mapping tile server from the campus ERP server to reduce processing friction.
-- **Payment Gateway Realization:** Integrating Razorpay or Stripe directly into the student dashboard for immediate clearance of semester fees and exam registrations.
+**7.2 SCALING AND ARCHITECTURE REFACTORING**
+- **Platform Split / Microservices Shift:** Decoupling Ariv Social from Campusolam ERP into separate, isolated domains that communicate via strict microservice APIs. This will permanently resolve the current user permission overlapping and enforce enterprise-grade security for the academic wing.
 
 ---
 
 # CHAPTER 8: CONCLUSION
 
-The Campusolam ERP project represents a significant leap forward in institutional technology management. By resolving the fragmentation of legacy platforms and synthesizing academic workflows into a sleek, fast, highly secure architecture, the project proves that modern methodologies typically reserved for commercial tech products are highly applicable and desperately needed within educational ecosystems. 
+The Arivolam project represents a bold leap forward in institutional technology configuration. By tackling the fragmentation of legacy platforms and successfully merging academic workflows with a modern social networking experience into a sleek, fast architecture, the project proves that modern methodologies are highly applicable within educational ecosystems. 
 
 Technically, the successful integration of Next.js, Edge Computing, and PostgreSQL RLS highlights an advanced mastery of full-stack engineering. Socially and academically, it provides complete transparency between educators and learners, minimizing friction and allowing the institution to focus entirely on education rather than administration.
 

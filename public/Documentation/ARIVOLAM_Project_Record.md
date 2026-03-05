@@ -350,14 +350,12 @@
      The primary problems identified in the current educational technology
      landscape include:
 
-     1. Fragmented Communication Channels: Educational institutions
-        typically deploy multiple disconnected systems - a Learning
-        Management System (LMS) like Moodle for academic content delivery,
-        examination management systems like Embase Pro Suite for exam
-        administration, separate social platforms for campus engagement,
-        and physical notice boards or digital signage for announcements.
-        This fragmentation leads to information silos and communication
-        gaps.
+     1. Fragmented Digital Ecosystem: Educational institutions typically
+        deploy multiple disconnected systems - a Learning Management System
+        (LMS) like Moodle for academic content, examination systems like
+        Embase Pro Suite, separate social platforms (like WhatsApp/Discord)
+        for campus engagement, and physical notice boards. This fragmentation
+        leads to severe digital fatigue and communication gaps.
 
      2. Inefficient Academic Management: Traditional ERP systems focus
         primarily on administrative tasks while neglecting the social and
@@ -368,25 +366,19 @@
      3. Navigation Challenges: Large campus environments pose significant
         navigation challenges for new students, visitors, and faculty.
         Existing solutions often lack interactive maps or provide static
-        maps that cannot be updated or customized for specific events or
-        temporary changes.
+        maps that cannot be updated or customized.
 
      4. Limited Accessibility: Many existing solutions are platform-specific
-        or require dedicated mobile applications, leading to accessibility
-        issues. Students and faculty must maintain multiple accounts and
-        applications to access different services.
+        or require dedicated applications, leading to accessibility issues.
+        Students and faculty must maintain multiple accounts.
 
-     5. Lack of Personalization: Generic institutional systems fail to
-        provide personalized experiences tailored to individual users'
-        roles, preferences, and specific academic journeys.
-
-     6. Absence of Intelligent Support: Most institutional systems lack
+     5. Lack of Intelligent Support: Most institutional systems lack
         AI-powered assistance that could help students and faculty with
         queries, schedule management, and academic guidance.
 
      The Arivolam project aims to address these challenges by creating a
-     comprehensive, all-in-one platform that seamlessly integrates social
-     networking, academic management, and intelligent assistance.
+     unified, holistic platform that integrates Ariv Social (social media
+     for institutions) and Campusolam (ERP, LMS, and navigation).
 
 
      1.2 PROJECT MOTIVATION
@@ -474,14 +466,19 @@
      - User authentication with multiple OAuth providers (Google, GitHub,
        Facebook, Apple) and email/password authentication
      - Multi-institution support with custom branding per institution
+     - User Roles:
+       * Common: Dev-Admin, Public User
+       * Ariv Social: Personal Accounts, Institution Accounts
+       * Campusolam: Admin, Faculty, Student
      - Social networking features (posts, reactions, comments, follows,
-       hashtags)
+       hashtags) via Ariv Social
      - Academic ERP features (timetable, attendance, exams, marks,
-       assignments)
+       assignments) via Campusolam
      - Interactive campus maps with floor plans and navigation
      - AI Assistant for academic queries
-     - Role-based access control (Student, Faculty, Admin)
+     - Row Level Security (RLS) policies for data isolation
      - Responsive web design with dark mode
+     - Server-Side Rendering (SSR)
      - RESTful API endpoints
      - Real-time database subscriptions
 
@@ -580,41 +577,27 @@
      Based on the analysis of existing systems, the following problems and
      limitations have been identified:
 
-     1. Integration Gap:
-        - No seamless data flow between academic systems and social
-          platforms
-        - Manual synchronization required for cross-system operations
-        - Information duplication and inconsistency issues
+     1. Integration Gap (Digital Fragmentation):
+        - Disjointed workflow between social engagement and academic tracking.
+        - Students switch between WhatsApp for updates and ERPs for attendance.
+        - Important announcements get lost in informal communication channels.
 
      2. User Experience Issues:
-        - Steep learning curve due to multiple disconnected interfaces
-        - Lack of personalization and contextual awareness
-        - Poor mobile responsiveness in some legacy systems
+        - Steep learning curve due to multiple disconnected interfaces.
+        - Lack of personalization and contextual awareness.
+        - Poor mobile responsiveness in legacy ERPs.
 
      3. Operational Inefficiencies:
-        - Time-consuming administrative tasks
-        - Duplicate data entry across systems
-        - Lack of real-time updates and notifications
+        - Duplicate data entry across systems.
+        - Lack of real-time updates (e.g., attendance taking time to reflect).
 
-     4. Communication Gaps:
-        - Important announcements lost in email inboxes
-        - No unified notification system
-        - Fragmented discussions across platforms
+     4. Navigation Problems:
+        - Static maps that cannot reflect real-time changes.
+        - No indoor navigation for multi-story buildings.
 
-     5. Navigation Problems:
-        - Static maps that cannot reflect real-time changes
-        - No indoor navigation for multi-story buildings
-        - Difficulty locating specific rooms or facilities
-
-     6. Limited Accessibility:
-        - Platform-specific applications requiring downloads
-        - Inconsistent feature availability across devices
-        - Accessibility issues for users with disabilities
-
-     7. Lack of Intelligent Support:
-        - No AI-powered assistance for common queries
-        - Limited automation of routine tasks
-        - No personalized recommendations or insights
+     5. Lack of Intelligent Support:
+        - No AI-powered assistance for common queries.
+        - Limited automation of routine tasks.
 
      -------------------------------------------------------------------------
      Table 2.2: Feature Comparison Analysis
@@ -622,9 +605,9 @@
 
      Feature                    | Moodle | Embase | Arivolam
      ---------------------------|--------|--------|---------
-     Social Networking         |   No   |   No   |   Yes
+     Social Networking         |   No   |   No   |   Yes (Ariv Social)
      ---------------------------|--------|--------|---------
-     Academic ERP              | Limited| Limited|   Yes
+     Academic ERP              | Limited| Limited|   Yes (Campusolam)
      ---------------------------|--------|--------|---------
      Interactive Maps          |   No   |   No   |   Yes
      ---------------------------|--------|--------|---------
@@ -638,6 +621,14 @@
      ---------------------------|--------|--------|---------
      Responsive Design         |  Yes   |  Yes   |   Yes
      ---------------------------|--------|--------|---------
+
+     *Architectural Disadvantage Notice:*
+     While Arivolam integrates Ariv Social and Campusolam into a unified 
+     app to solve digital fragmentation, this approach inherently conflicts 
+     in terms of user base functionality and decreases the overall enterprise 
+     security level by mixing an open social network with sensitive ERP data. 
+     *Future Plan:* Split these into two distinct applications (microservices) 
+     to resolve this architectural limitation.
 
 
      2.3 PROPOSED SOLUTION
@@ -1827,29 +1818,23 @@
 
      The following feature enhancements are planned for future releases:
 
-     1. Mobile Application:
-        - Native iOS and Android applications
-        - Push notifications
-        - Offline functionality
-        - Camera integration for document scanning
+     1. Extended AR/VR Capabilities:
+        - 3D, AR/VR navigation for the interactive campus map.
 
-     2. Advanced Social Features:
-        - Real-time chat/messaging
-        - Video and live streaming support
-        - Student groups and communities
-        - Event creation and RSVP
+     2. Hardware Integration for Automation:
+        - Automatic attendance system using RFID and sensors for students and faculties.
 
-     3. Extended Academic Features:
-        - Online examination with proctoring
-        - Digital library integration
-        - Certificate generation
-        - plagiarism detection for assignments
+     3. Global Accessibility:
+        - Maximum possible languages support using AI (i8n).
 
-     4. AI Enhancements:
-        - Personalized learning recommendations
-        - Automated academic counseling
-        - Predictive analytics for student performance
-        - Voice assistant integration
+     4. Advanced Analytics:
+        - AI based insights and analysis for the LMS/ERP module.
+
+     5. Monetary Processing:
+        - Payment gateway and in-app payments for fees and events.
+
+     6. Platform Architecture:
+        - Splitting Ariv Social and Campusolam into two decoupled microservice applications to resolve security and user group conflicts.
 
 
      7.2 SCALABILITY IMPROVEMENTS
