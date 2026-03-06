@@ -106,6 +106,16 @@ export async function getMyTimetableEntries(slug: string) {
     if (auth.error) throw new Error(auth.error);
     const sc = getServiceClient();
 
+    const { data: fsData, error: fsError } = await sc
+        .from("faculty_subjects")
+        .select("id")
+        .eq("enrollment_id", auth.enrollmentId!)
+        .eq("is_active", true);
+
+    if (fsError || !fsData || fsData.length === 0) return [];
+
+    const fsIds = fsData.map(fs => fs.id);
+
     const { data, error } = await sc
         .from("timetable_entries")
         .select(`
@@ -114,7 +124,7 @@ export async function getMyTimetableEntries(slug: string) {
             subject:subjects(id, name, code),
             period:periods(id, name, start_time, end_time, sort_order)
         `)
-        .eq("faculty_subject_id", auth.enrollmentId!)
+        .in("faculty_subject_id", fsIds)
         .eq("is_active", true);
 
     if (error) throw new Error(error.message);
@@ -130,6 +140,19 @@ export async function markAttendance(slug: string, data: {
     const auth = await resolveFacultyEnrollment(slug);
     if (auth.error) return { error: auth.error };
     const sc = getServiceClient();
+
+    // If no records are sent, the faculty is clearing all attendance for this period
+    if (data.records.length === 0) {
+        const { error } = await sc
+            .from("attendance")
+            .delete()
+            .eq("timetable_entry_id", data.timetable_entry_id)
+            .eq("date", data.date);
+
+        if (error) return { error: error.message };
+        revalidatePath(`/campus/${slug}/faculty`);
+        return { success: true };
+    }
 
     const rows = data.records.map(r => ({
         student_enrollment_id: r.student_enrollment_id,

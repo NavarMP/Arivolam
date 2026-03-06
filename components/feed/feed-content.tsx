@@ -28,7 +28,7 @@ interface FeedContentProps {
 }
 
 export function FeedContent({ initialPosts, institutions, user }: FeedContentProps) {
-    const [posts] = useState<PostData[]>(initialPosts);
+    const [posts, setPosts] = useState<PostData[]>(initialPosts);
     const [showCreatePost, setShowCreatePost] = useState(false);
 
     return (
@@ -140,7 +140,12 @@ export function FeedContent({ initialPosts, institutions, user }: FeedContentPro
             <div className="space-y-4">
                 {posts.length > 0 ? (
                     posts.map((post) => (
-                        <PostCard key={post.id} post={post} />
+                        <PostCard
+                            key={post.id}
+                            post={post}
+                            currentUserId={user?.id}
+                            onDelete={(postId) => setPosts(posts.filter(p => p.id !== postId))}
+                        />
                     ))
                 ) : (
                     <motion.div

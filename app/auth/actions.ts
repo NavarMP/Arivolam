@@ -29,8 +29,32 @@ export async function signup(formData: FormData) {
 
     const email = formData.get('email') as string
     const password = formData.get('password') as string
-    const fullName = formData.get('fullName') as string
+    const confirmPassword = formData.get('confirmPassword') as string
+    const accountType = (formData.get('accountType') as string) || 'personal'
+    const username = formData.get('username') as string
+
+    const fullName = accountType === 'institution' ? formData.get('institutionName') as string : formData.get('fullName') as string
+    const website = formData.get('website') as string
     const phone = formData.get('phone') as string
+
+    if (password !== confirmPassword) {
+        return { error: 'Passwords do not match' }
+    }
+
+    if (!username || username.length < 3) {
+        return { error: 'Username must be at least 3 characters' }
+    }
+
+    // Check if username is already taken
+    const { data: existingProfile } = await supabase
+        .from('arivolam_profiles')
+        .select('id')
+        .eq('username', username)
+        .single()
+
+    if (existingProfile) {
+        return { error: 'Username is already taken' }
+    }
 
     const { error } = await supabase.auth.signUp({
         email,
@@ -39,6 +63,9 @@ export async function signup(formData: FormData) {
             data: {
                 full_name: fullName,
                 phone: phone,
+                username: username,
+                profile_type: accountType,
+                website: website || null
             },
         },
     })

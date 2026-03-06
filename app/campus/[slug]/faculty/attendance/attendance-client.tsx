@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Check, Loader2, Users, Clock, CalendarCheck } from "lucide-react";
 import { toast } from "sonner";
-import { getClassStudents, markAttendance } from "../faculty-actions";
+import { getClassStudents, getAttendanceForEntry, markAttendance } from "../faculty-actions";
 
 type ClassAssignment = {
     id: string;
@@ -32,7 +32,7 @@ type StudentRecord = {
     enrollment_id: string;
     name: string;
     register_number: string | null;
-    status: "present" | "absent" | "late" | "od" | "leave";
+    status: "present" | "absent" | "late" | "od" | "leave" | "unmarked";
 };
 
 const STATUS_OPTIONS = [
@@ -41,6 +41,7 @@ const STATUS_OPTIONS = [
     { value: "late", label: "L", color: "bg-amber-500 text-white" },
     { value: "od", label: "OD", color: "bg-blue-500 text-white" },
     { value: "leave", label: "LV", color: "bg-gray-500 text-white" },
+    { value: "unmarked", label: "-", color: "bg-gray-200 text-gray-500 dark:bg-gray-800 dark:text-gray-400" },
 ];
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -66,25 +67,52 @@ export default function AttendanceClient({
     ).filter(Boolean);
 
     // Filter timetable entries for selected class on the selected day
-    const selectedDay = new Date(date).getDay();
+    const [y, m, d] = date.split('-').map(Number);
+    const selectedDay = new Date(y, m - 1, d).getDay();
     const relevantEntries = timetableEntries.filter(
         te => te.class?.id === selectedClassId && te.day_of_week === selectedDay
     ).sort((a, b) => (a.period?.sort_order || 0) - (b.period?.sort_order || 0));
 
-    // Load students when class is selected
+    // Reset entry id if it's no longer valid for the selected date
+    useEffect(() => {
+        if (selectedEntryId && !relevantEntries.find(te => te.id === selectedEntryId)) {
+            setSelectedEntryId("");
+        }
+    }, [date, selectedClassId]);
+
+    // Load students and attendance when class/entry/date changes
     useEffect(() => {
         if (!selectedClassId) { setStudents([]); return; }
+        let isCurrent = true;
         setLoading(true);
-        getClassStudents(slug, selectedClassId).then(data => {
-            setStudents(data.map((s: any) => ({
-                enrollment_id: s.student?.id || s.enrollment_id,
-                name: s.student?.full_name || "Unknown",
-                register_number: s.student?.register_number || null,
-                status: "present" as const,
-            })));
+
+        Promise.all([
+            getClassStudents(slug, selectedClassId),
+            selectedEntryId ? getAttendanceForEntry(slug, selectedEntryId, date) : Promise.resolve([])
+        ]).then(([studentsData, attendanceData]: any) => {
+            if (!isCurrent) return;
+
+            const attMap = new Map();
+            attendanceData.forEach((a: any) => {
+                attMap.set(a.student?.id || a.student?.enrollment_id, a.status);
+            });
+
+            setStudents(studentsData.map((s: any) => {
+                const enrollmentId = s.student?.id || s.enrollment_id;
+                return {
+                    enrollment_id: enrollmentId,
+                    name: s.student?.full_name || "Unknown",
+                    register_number: s.student?.register_number || s.roll_number || null,
+                    status: attMap.get(enrollmentId) || "unmarked" as const,
+                };
+            }));
             setLoading(false);
-        }).catch(() => setLoading(false));
-    }, [selectedClassId, slug]);
+        }).catch(() => {
+            if (isCurrent) setLoading(false);
+        });
+
+        return () => { isCurrent = false; };
+    }, [selectedClassId, selectedEntryId, date, slug]);
 
     const updateStatus = (enrollmentId: string, status: string) => {
         setStudents(prev => prev.map(s =>
@@ -100,22 +128,50 @@ export default function AttendanceClient({
         setStudents(prev => prev.map(s => ({ ...s, status: "absent" })));
     };
 
+    const clearAll = () => {
+        if (confirm("Are you sure you want to clear all attendance marks?")) {
+            setStudents(prev => prev.map(s => ({ ...s, status: "unmarked" })));
+        }
+    };
+
     const handleSubmit = () => {
         if (!selectedEntryId || !date || students.length === 0) {
             toast.error("Please select a class, period, and date.");
             return;
         }
+
+        const unmarked = students.filter(s => s.status === "unmarked").length;
+        if (unmarked > 0) {
+            if (unmarked < students.length) {
+                toast.error(`Please mark attendance for all students. ${unmarked} students are still unmarked.`);
+                return;
+            }
+            if (!confirm(`Are you sure you want to CLEAR all attendance records for this period?`)) {
+                return;
+            }
+        } else {
+            if (!confirm("Are you sure you want to submit the attendance for this class?")) {
+                return;
+            }
+        }
+
+        const validRecords = students.filter(s => s.status !== "unmarked");
+
         startTransition(async () => {
             const result = await markAttendance(slug, {
                 timetable_entry_id: selectedEntryId,
                 date,
-                records: students.map(s => ({
+                records: validRecords.map(s => ({
                     student_enrollment_id: s.enrollment_id,
                     status: s.status,
                 })),
             });
             if (result.error) { toast.error(result.error); } else {
-                toast.success(`Attendance marked for ${students.length} students!`);
+                if (validRecords.length === 0) {
+                    toast.success("Attendance cleared successfully.");
+                } else {
+                    toast.success(`Attendance marked for ${validRecords.length} students!`);
+                }
             }
         });
     };
@@ -174,7 +230,7 @@ export default function AttendanceClient({
             {/* Student List */}
             {loading ? (
                 <Card><CardContent className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></CardContent></Card>
-            ) : students.length > 0 ? (
+            ) : students.length > 0 && selectedEntryId ? (
                 <div className="space-y-4">
                     {/* Summary Bar */}
                     <Card className="bg-gradient-to-r from-emerald-50 to-blue-50 dark:from-emerald-950/20 dark:to-blue-950/20 border-emerald-100 dark:border-emerald-900/50">
@@ -189,13 +245,18 @@ export default function AttendanceClient({
                                     <p className="text-xs text-muted-foreground">Absent</p>
                                 </div>
                                 <div className="text-center">
-                                    <p className="text-2xl font-bold text-muted-foreground">{students.length - presentCount - absentCount}</p>
-                                    <p className="text-xs text-muted-foreground">Other</p>
+                                    <p className="text-2xl font-bold text-muted-foreground">{students.filter(s => s.status === "unmarked").length}</p>
+                                    <p className="text-xs text-muted-foreground">Unmarked</p>
                                 </div>
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 items-center flex-wrap justify-end">
                                 <Button variant="outline" size="sm" onClick={markAllPresent}>All Present</Button>
                                 <Button variant="outline" size="sm" onClick={markAllAbsent}>All Absent</Button>
+                                <Button variant="ghost" size="sm" onClick={clearAll} className="text-red-500 hover:text-red-600 hover:bg-red-50">Clear</Button>
+                                <Button onClick={handleSubmit} disabled={isPending || !selectedEntryId} size="sm" className="gap-2 ml-2">
+                                    {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                                    Submit
+                                </Button>
                             </div>
                         </CardContent>
                     </Card>
@@ -227,15 +288,15 @@ export default function AttendanceClient({
                             </Card>
                         ))}
                     </div>
-
-                    {/* Submit */}
-                    <div className="flex justify-end">
-                        <Button onClick={handleSubmit} disabled={isPending || !selectedEntryId} size="lg" className="gap-2">
-                            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                            Submit Attendance
-                        </Button>
-                    </div>
                 </div>
+            ) : selectedClassId && !selectedEntryId ? (
+                <Card className="border-dashed">
+                    <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+                        <Clock className="h-12 w-12 text-muted-foreground/30 mb-4" />
+                        <h3 className="text-lg font-semibold">Select a Period</h3>
+                        <p className="text-sm text-muted-foreground">Please select a time period to mark attendance.</p>
+                    </CardContent>
+                </Card>
             ) : selectedClassId ? (
                 <Card className="border-dashed">
                     <CardContent className="flex flex-col items-center justify-center py-16 text-center">

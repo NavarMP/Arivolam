@@ -78,8 +78,8 @@ export default function FacultiesClient({ faculties: initialFaculties, pendingRe
     const [isPending, startTransition] = useTransition();
 
     const filteredFaculties = faculties.filter(f =>
-        f.full_name.toLowerCase().includes(search.toLowerCase()) ||
-        f.email.toLowerCase().includes(search.toLowerCase()) ||
+        (f.full_name || "").toLowerCase().includes(search.toLowerCase()) ||
+        (f.email || "").toLowerCase().includes(search.toLowerCase()) ||
         (f.department || "").toLowerCase().includes(search.toLowerCase())
     );
 

@@ -16,9 +16,18 @@ import {
     Lightbulb,
     HandHeart,
     Image as ImageIcon,
+    Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { deletePost } from "@/app/profile/post-actions";
+import { toast } from "sonner";
 
 export interface PostData {
     id: string;
@@ -56,11 +65,13 @@ const reactions = [
 
 interface PostCardProps {
     post: PostData;
+    currentUserId?: string;
     onReact?: (postId: string, type: string) => void;
     onSave?: (postId: string) => void;
+    onDelete?: (postId: string) => void;
 }
 
-export function PostCard({ post, onReact, onSave }: PostCardProps) {
+export function PostCard({ post, currentUserId, onReact, onSave, onDelete }: PostCardProps) {
     const author = post.author ?? {
         id: "unknown",
         username: "",
@@ -144,9 +155,37 @@ export function PostCard({ post, onReact, onSave }: PostCardProps) {
                     </div>
                 </div>
 
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full shrink-0">
-                    <MoreHorizontal className="h-4 w-4" />
-                </Button>
+                {currentUserId === author.id ? (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full shrink-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                                className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer"
+                                onClick={async () => {
+                                    if (confirm("Are you sure you want to delete this post?")) {
+                                        const res = await deletePost(post.id);
+                                        if (res.error) toast.error(res.error);
+                                        else {
+                                            toast.success("Post deleted");
+                                            onDelete?.(post.id);
+                                        }
+                                    }
+                                }}
+                            >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete Post
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                ) : (
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full shrink-0">
+                        <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                )}
             </div>
 
             {/* Content */}

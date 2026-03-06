@@ -1,6 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { notFound, redirect } from "next/navigation";
-import { PersonalProfileView } from "@/components/feed/personal-profile-view";
+import { InstitutionProfileView } from "@/components/feed/institution-profile-view";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +8,7 @@ interface ProfilePageProps {
     params: Promise<{ username: string }>;
 }
 
-export default async function PublicProfilePage({ params }: ProfilePageProps) {
+export default async function InstitutionProfilePage({ params }: ProfilePageProps) {
     const { username } = await params;
     const supabase = await createClient();
     const { data: { user: currentUser } } = await supabase.auth.getUser();
@@ -16,7 +16,6 @@ export default async function PublicProfilePage({ params }: ProfilePageProps) {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(username);
     const queryFilter = isUuid ? `username.eq."${username}",id.eq."${username}"` : `username.eq."${username}"`;
 
-    // Fetch profile by username or id
     const { data: profile } = await supabase
         .from("arivolam_profiles")
         .select(`
@@ -45,6 +44,11 @@ export default async function PublicProfilePage({ params }: ProfilePageProps) {
 
     if (!profile) notFound();
 
+    // If it's a personal account, redirect back to standard path
+    if (profile.profile_type !== 'institution') {
+        redirect(`/${profile.username || profile.id}`);
+    }
+
     const isOwnProfile = currentUser?.id === profile.id;
 
     // Reject if not public and not owner
@@ -52,7 +56,6 @@ export default async function PublicProfilePage({ params }: ProfilePageProps) {
         notFound();
     }
 
-    // Fetch user's recent posts
     const { data: posts } = await supabase
         .from("posts")
         .select(`
@@ -69,7 +72,6 @@ export default async function PublicProfilePage({ params }: ProfilePageProps) {
         .order("created_at", { ascending: false })
         .limit(10);
 
-    // Get institution memberships
     const { data: memberships } = await supabase
         .from("institution_members")
         .select(`
@@ -79,7 +81,6 @@ export default async function PublicProfilePage({ params }: ProfilePageProps) {
         .eq("user_id", profile.id)
         .eq("is_active", true);
 
-    // Check if current user follows this user
     let isFollowing = false;
     if (currentUser && !isOwnProfile) {
         const { data: follow } = await supabase
@@ -91,12 +92,8 @@ export default async function PublicProfilePage({ params }: ProfilePageProps) {
         isFollowing = !!follow;
     }
 
-    if (profile.profile_type === 'institution') {
-        redirect(`/institution/${profile.username}`);
-    }
-
     return (
-        <PersonalProfileView
+        <InstitutionProfileView
             profile={profile}
             posts={posts || []}
             memberships={memberships || []}
