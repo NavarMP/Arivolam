@@ -86,7 +86,6 @@ function getSidebarNav(slug: string, role: string) {
             { label: "Assignments", href: `${base}/student/assignments`, icon: ClipboardList },
             { label: "Grades", href: `${base}/student/grades`, icon: BarChart3 },
             { label: "My Attendance", href: `${base}/student/attendance`, icon: CalendarCheck },
-            { label: "My Marks", href: `${base}/student/marks`, icon: FileText },
             { label: "Calendar", href: `${base}/calendar`, icon: Calendar },
             { label: "Campus Map", href: `${base}/map`, icon: Compass },
             { label: "Profile", href: `${base}/profile`, icon: User },

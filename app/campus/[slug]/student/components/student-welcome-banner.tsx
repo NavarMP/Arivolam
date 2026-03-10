@@ -21,7 +21,7 @@ export function StudentWelcomeBanner({
     const identifier = student.admission_number || student.register_number || "No ID Linked";
 
     return (
-        <Card className="overflow-hidden border-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-indigo-600 text-white shadow-md">
+        <Card className="overflow-hidden border-0 bg-gradient-to-br from-indigo-500 via-blue-500 to-indigo-600 text-white shadow-md">
             <CardContent className="p-0">
                 <div className="relative p-6 sm:p-8 md:p-10">
                     <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">

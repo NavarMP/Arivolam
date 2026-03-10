@@ -90,92 +90,10 @@ export default async function CampusAdminPage({
             </div>
 
             {/* Main Content Area */}
-            <div className="grid gap-6 xl:grid-cols-3">
+            <div className="grid gap-6">
                 {/* Pending Enrollments Widget (Takes up 2 cols on huge screens) */}
                 <div className="xl:col-span-2">
                     <PendingWidget initialPendings={pendingEnrollments || []} slug={slug} />
-                </div>
-
-                {/* Academic Management Quick Links */}
-                <div className="space-y-6">
-                    <Card className="border-border/50 shadow-sm">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <BookOpen className="h-5 w-5 text-blue-500" />
-                                Academic Management
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex flex-col gap-2">
-                                <Button variant="outline" className="justify-start w-full gap-2" asChild>
-                                    <Link href={`/campus/${slug}/admin/departments`}>
-                                        <Building2 className="h-4 w-4" />
-                                        Departments
-                                    </Link>
-                                </Button>
-                                <Button variant="outline" className="justify-start w-full gap-2" asChild>
-                                    <Link href={`/campus/${slug}/admin/semesters`}>
-                                        <CalendarDays className="h-4 w-4" />
-                                        Semesters
-                                    </Link>
-                                </Button>
-                                <Button variant="outline" className="justify-start w-full gap-2" asChild>
-                                    <Link href={`/campus/${slug}/admin/classes`}>
-                                        <GraduationCap className="h-4 w-4" />
-                                        Classes
-                                    </Link>
-                                </Button>
-                                <Button variant="outline" className="justify-start w-full gap-2" asChild>
-                                    <Link href={`/campus/${slug}/admin/periods`}>
-                                        <Clock className="h-4 w-4" />
-                                        Periods / Hours
-                                    </Link>
-                                </Button>
-                                <Button variant="outline" className="justify-start w-full gap-2" asChild>
-                                    <Link href={`/campus/${slug}/admin/subjects`}>
-                                        <BookOpen className="h-4 w-4" />
-                                        Subjects & Assignments
-                                    </Link>
-                                </Button>
-                                <Button variant="outline" className="justify-start w-full gap-2" asChild>
-                                    <Link href={`/campus/${slug}/admin/students`}>
-                                        <UserPlus className="h-4 w-4" />
-                                        Students
-                                    </Link>
-                                </Button>
-                                <Button variant="outline" className="justify-start w-full gap-2" asChild>
-                                    <Link href={`/campus/${slug}/admin/events`}>
-                                        <CalendarRange className="h-4 w-4" />
-                                        Events
-                                    </Link>
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Card className="border-border/50 shadow-sm">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Map className="h-5 w-5 text-emerald-500" />
-                                Campus Tools
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex flex-col gap-2">
-                                <Button variant="outline" className="justify-start w-full gap-2" asChild>
-                                    <Link href={`/campus/${slug}/admin/map-editor`}>
-                                        <Map className="h-4 w-4" />
-                                        Campus Map Editor
-                                    </Link>
-                                </Button>
-                                <Button variant="ghost" className="justify-start w-full gap-2 text-muted-foreground" asChild>
-                                    <Link href={`/campus/${slug}/admin/map-guide`}>
-                                        <BookOpen className="h-4 w-4" />
-                                        Map Editor Guide
-                                    </Link>
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
                 </div>
             </div>
         </div>

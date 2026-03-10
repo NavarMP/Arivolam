@@ -165,7 +165,7 @@ export default function AboutPage() {
 
                 <div className="relative z-10">
                     <div className="hero-logo flex justify-center mb-6">
-                        <AdaptiveLogo size={400} />
+                        <AdaptiveLogo size={300} />
                     </div>
                     <h1 className="hero-title mb-4 text-5xl font-bold tracking-tight sm:text-7xl">
                         Arivolam
@@ -375,40 +375,6 @@ export default function AboutPage() {
                             </div>
                         </div>
                     </div>
-                </div>
-            </section>
-
-            {/* The Gap & Existing Systems */}
-            <section
-                ref={(el) => { sectionRefs.current.push(el); }}
-                className="container mx-auto max-w-5xl px-4 py-16"
-            >
-                <div className="reveal mb-12 text-center">
-                    <Server className="mx-auto mb-3 h-6 w-6 text-primary" />
-                    <h2 className="text-3xl font-bold tracking-tight">The Problem with Existing Systems</h2>
-                    <p className="mt-2 text-sm text-muted-foreground">Why we needed to build Arivolam.</p>
-                </div>
-
-                <div className="grid gap-8 lg:grid-cols-2">
-                    <div className="reveal hover-lift rounded-3xl border border-border/40 bg-card p-8 transition-shadow hover:shadow-md">
-                        <h3 className="mb-3 text-xl font-bold flex items-center gap-2"><AlertCircle className="h-5 w-5 text-amber-500" /> Embase Pro Suite</h3>
-                        <p className="mb-4 text-sm text-muted-foreground font-mono">egov.embase.in</p>
-                        <p className="text-sm leading-relaxed text-muted-foreground mb-4">
-                            Embase provides a solid administrative ERP, but it suffers from a rigid, purely clerical interface. It acts as a strict data-entry portal rather than engaging the students proactively. Moreover, the lack of modern, real-time UI/UX makes interactions tedious and disconnected from dynamic campus life.
-                        </p>
-                    </div>
-                    <div className="reveal hover-lift rounded-3xl border border-border/40 bg-card p-8 transition-shadow hover:shadow-md">
-                        <h3 className="mb-3 text-xl font-bold flex items-center gap-2"><AlertCircle className="h-5 w-5 text-amber-500" /> Moodle</h3>
-                        <p className="mb-4 text-sm text-muted-foreground font-mono">moodle.com & moodle.org</p>
-                        <p className="text-sm leading-relaxed text-muted-foreground mb-4">
-                            Moodle is one of the most widely used Learning Management Systems globally. However, its immense feature set results in extreme complexity and an outdated user interface. Small and medium institutions struggle with its heavy deployment overhead, and it fails to unify spatial campus features like interactive maps.
-                        </p>
-                    </div>
-                </div>
-                <div className="reveal mt-8 rounded-2xl bg-primary/5 p-6 border border-primary/20 text-center">
-                    <p className="text-sm font-semibold text-primary">
-                        Arivolam bridges this gap by combining the administrative power of an ERP directly with a modernized, lightning-fast Next.js architecture, making management as intuitive as scrolling through a modern app.
-                    </p>
                 </div>
             </section>
 
