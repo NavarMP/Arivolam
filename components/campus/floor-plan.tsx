@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import dynamic from "next/dynamic";
+// next/dynamic removed — SSR protection handled by parent
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,14 +29,8 @@ import {
     Square, ChevronDown, ChevronUp, Pencil,
 } from "lucide-react";
 
-// Dynamic import react-konva
-const Stage = dynamic(() => import("react-konva").then((m) => ({ default: m.Stage })), { ssr: false });
-const KonvaLayer = dynamic(() => import("react-konva").then((m) => ({ default: m.Layer })), { ssr: false });
-const Rect = dynamic(() => import("react-konva").then((m) => ({ default: m.Rect })), { ssr: false });
-const KonvaCircle = dynamic(() => import("react-konva").then((m) => ({ default: m.Circle })), { ssr: false });
-const Text = dynamic(() => import("react-konva").then((m) => ({ default: m.Text })), { ssr: false });
-const Line = dynamic(() => import("react-konva").then((m) => ({ default: m.Line })), { ssr: false });
-const Group = dynamic(() => import("react-konva").then((m) => ({ default: m.Group })), { ssr: false });
+// Import react-konva directly — SSR protection is handled by parent dynamic import
+import { Stage, Layer as KonvaLayer, Rect, Circle as KonvaCircle, Text, Line, Group } from "react-konva";
 
 // ─── Types ───
 
@@ -426,43 +420,41 @@ function renderElement(el: FloorElement, isSelected: boolean, tc: typeof THEME.d
 // ─── Floor Plan Editor (admin) ───
 
 interface FloorPlanEditorProps {
-    initialFloorPlan?: FloorPlan;
+    existingPlan?: FloorPlan;
     buildingId: string;
     floorNumber: number;
-    buildingName: string;
-    buildingWidth?: number;
-    buildingHeight?: number;
     onSave: (plan: FloorPlan) => void;
     onClose: () => void;
+    /** Called after save with room elements, so the parent can sync them to the DB */
+    onRoomSync?: (rooms: { elementId: string; name: string; roomType: string; capacity: number; floorNumber: number }[]) => void;
+    /** Called on double-click of a room element, so the parent can open the full RoomDialog */
+    onRoomEdit?: (roomElement: FloorElement) => void;
 }
 
 export function FloorPlanEditor({
-    initialFloorPlan,
+    existingPlan,
     buildingId,
     floorNumber,
-    buildingName,
-    buildingWidth,
-    buildingHeight,
     onSave,
     onClose,
+    onRoomSync,
+    onRoomEdit,
 }: FloorPlanEditorProps) {
     const { resolvedTheme } = useTheme();
     const tc = THEME[resolvedTheme === "light" ? "light" : "dark"];
 
     // Use building dimensions if provided, otherwise default to reasonable sizes
     const planWidth = useMemo(() => {
-        if (initialFloorPlan?.width && initialFloorPlan.width !== 800) return initialFloorPlan.width;
-        if (buildingWidth && buildingWidth > 50) return Math.max(300, Math.round(buildingWidth * 2));
+        if (existingPlan?.width && existingPlan.width !== 800) return existingPlan.width;
         return 800;
-    }, [initialFloorPlan, buildingWidth]);
+    }, [existingPlan]);
 
     const planHeight = useMemo(() => {
-        if (initialFloorPlan?.height && initialFloorPlan.height !== 600) return initialFloorPlan.height;
-        if (buildingHeight && buildingHeight > 50) return Math.max(200, Math.round(buildingHeight * 2));
+        if (existingPlan?.height && existingPlan.height !== 600) return existingPlan.height;
         return 600;
-    }, [initialFloorPlan, buildingHeight]);
+    }, [existingPlan]);
 
-    const [elements, setElements] = useState<FloorElement[]>(initialFloorPlan?.elements || []);
+    const [elements, setElements] = useState<FloorElement[]>(existingPlan?.elements || []);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [tool, setTool] = useState<ToolType>("select");
     const [scale, setScale] = useState(1);
@@ -471,6 +463,12 @@ export function FloorPlanEditor({
     const [showGrid, setShowGrid] = useState(true);
     const containerRef = useRef<HTMLDivElement>(null);
     const [dims, setDims] = useState({ w: 800, h: 600 });
+
+    // Panning state — track separately to avoid drag/pan conflict
+    const isPanning = useRef(false);
+    const panStart = useRef({ x: 0, y: 0 });
+    const offsetStart = useRef({ x: 0, y: 0 });
+    const isDraggingElement = useRef(false);
 
     // Wall drawing state
     const [wallStart, setWallStart] = useState<{ x: number; y: number } | null>(null);
@@ -671,15 +669,29 @@ export function FloorPlanEditor({
     const handleSave = async () => {
         setSaving(true);
         const plan: FloorPlan = {
-            id: initialFloorPlan?.id,
+            id: existingPlan?.id,
             building_id: buildingId,
             floor_number: floorNumber,
-            name: `${buildingName} - Floor ${floorNumber}`,
+            name: floorNumber === 1 ? "Ground Floor" : `Floor ${floorNumber}`,
             width: planWidth,
             height: planHeight,
             elements,
         };
         await onSave(plan);
+
+        // Sync room elements to the database
+        if (onRoomSync) {
+            const roomElements = elements.filter(el => el.type === "room");
+            const roomsToSync = roomElements.map(el => ({
+                elementId: el.id,
+                name: el.name || "Unnamed Room",
+                roomType: el.roomType || "classroom",
+                capacity: el.capacity || 0,
+                floorNumber,
+            }));
+            onRoomSync(roomsToSync);
+        }
+
         setSaving(false);
     };
 
@@ -751,12 +763,12 @@ export function FloorPlanEditor({
                 </div>
 
                 {/* Main area */}
-                <div className="flex-1 flex flex-col">
+                <div className="flex-1 flex flex-col relative">
                     {/* Header bar */}
                     <div className="flex items-center justify-between px-4 py-2 border-b bg-background/80 backdrop-blur-sm">
                         <div className="flex items-center gap-3">
                             <div>
-                                <h3 className="font-semibold text-sm">{buildingName} — Floor {floorNumber}</h3>
+                                <h3 className="font-semibold text-sm">Floor {floorNumber} Editor</h3>
                                 <p className="text-xs text-muted-foreground">
                                     {counts.room} rooms · {counts.wall} walls · {planWidth}×{planHeight}px
                                 </p>
@@ -815,11 +827,36 @@ export function FloorPlanEditor({
                             onClick={handleStageClick}
                             onTap={handleStageClick}
                             onWheel={handleWheel}
-                            draggable={tool === "select"}
-                            onDragEnd={(e) => {
-                                if (tool === "select") {
-                                    setOffset({ x: e.target.x(), y: e.target.y() });
+                            draggable={false}
+                            onMouseDown={(e: any) => {
+                                // Pan only on background/empty clicks, not on elements
+                                const target = e.target;
+                                const stage = target.getStage();
+                                if (target === stage || target.attrs.name === "background") {
+                                    if (tool === "select") {
+                                        isPanning.current = true;
+                                        panStart.current = stage.getPointerPosition() || { x: 0, y: 0 };
+                                        offsetStart.current = { ...offset };
+                                    }
                                 }
+                            }}
+                            onMouseMove={(e: any) => {
+                                if (isPanning.current && !isDraggingElement.current) {
+                                    const stage = e.target.getStage();
+                                    const pos = stage.getPointerPosition();
+                                    if (pos) {
+                                        setOffset({
+                                            x: offsetStart.current.x + (pos.x - panStart.current.x),
+                                            y: offsetStart.current.y + (pos.y - panStart.current.y),
+                                        });
+                                    }
+                                }
+                            }}
+                            onMouseUp={() => {
+                                isPanning.current = false;
+                            }}
+                            onMouseLeave={() => {
+                                isPanning.current = false;
                             }}
                         >
                             <KonvaLayer>
@@ -873,7 +910,18 @@ export function FloorPlanEditor({
                                     const interactiveProps = {
                                         draggable: tool === "select",
                                         onClick: (evt: any) => { evt.cancelBubble = true; setSelectedId(el.id); },
+                                        onDblClick: (evt: any) => {
+                                            evt.cancelBubble = true;
+                                            if (el.type === "room" && onRoomEdit) {
+                                                onRoomEdit(el);
+                                            }
+                                        },
+                                        onDragStart: () => {
+                                            isDraggingElement.current = true;
+                                            isPanning.current = false;
+                                        },
                                         onDragEnd: (evt: any) => {
+                                            isDraggingElement.current = false;
                                             if (el.type === "wall" && el.points) {
                                                 const dx = evt.target.x();
                                                 const dy = evt.target.y();
@@ -899,155 +947,158 @@ export function FloorPlanEditor({
                     </div>
                 </div>
 
-                {/* Right property panel */}
-                <AnimatePresence>
-                    {selectedElement && (
-                        <motion.div
-                            initial={{ width: 0, opacity: 0 }}
-                            animate={{ width: 250, opacity: 1 }}
-                            exit={{ width: 0, opacity: 0 }}
-                            className="border-l bg-background/95 backdrop-blur-sm overflow-hidden flex flex-col"
-                        >
-                            <ScrollArea className="flex-1 min-h-0">
-                                <div className="p-4 w-[250px]">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <div>
-                                            <h4 className="font-semibold text-sm capitalize">{selectedElement.type}</h4>
-                                            <p className="text-[10px] text-muted-foreground font-mono">{selectedElement.id.slice(0, 12)}</p>
-                                        </div>
-                                        <div className="flex gap-1">
-                                            <Button
-                                                variant="destructive"
-                                                size="icon"
-                                                className="h-7 w-7"
-                                                onClick={() => deleteElement(selectedElement.id)}
-                                            >
-                                                <Trash2 className="h-3 w-3" />
-                                            </Button>
-                                        </div>
+                {/* Right property panel - absolutely positioned */}
+                {selectedElement && (
+                    <div
+                        className="absolute top-0 right-0 bottom-0 w-[260px] border-l bg-background/95 backdrop-blur-sm flex flex-col z-10 overflow-hidden"
+                    >
+                        <ScrollArea className="flex-1 min-h-0">
+                            <div className="p-4 w-[260px]">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div>
+                                        <h4 className="font-semibold text-sm capitalize">{selectedElement.type}</h4>
+                                        <p className="text-[10px] text-muted-foreground font-mono">{selectedElement.id.slice(0, 12)}</p>
                                     </div>
-
-                                    <div className="space-y-3">
-                                        {/* Name (for rooms, staircases, elevators, corridors) */}
-                                        {(selectedElement.type === "room" || selectedElement.type === "staircase" ||
-                                            selectedElement.type === "elevator" || selectedElement.type === "corridor") && (
-                                                <div>
-                                                    <Label className="text-xs">Name</Label>
-                                                    <Input
-                                                        value={selectedElement.name || ""}
-                                                        onChange={(e) => updateElement(selectedElement.id, { name: e.target.value })}
-                                                        className="h-8 text-sm"
-                                                    />
-                                                </div>
-                                            )}
-
-                                        {/* Label text */}
-                                        {selectedElement.type === "label" && (
-                                            <div>
-                                                <Label className="text-xs">Text</Label>
-                                                <Input
-                                                    value={selectedElement.text || ""}
-                                                    onChange={(e) => updateElement(selectedElement.id, { text: e.target.value })}
-                                                    className="h-8 text-sm"
-                                                />
-                                            </div>
-                                        )}
-
-                                        {/* Room type */}
-                                        {selectedElement.type === "room" && (
-                                            <div>
-                                                <Label className="text-xs">Room Type</Label>
-                                                <Select
-                                                    value={selectedElement.roomType || "classroom"}
-                                                    onValueChange={(v) => updateElement(selectedElement.id, {
-                                                        roomType: v,
-                                                        fill: ROOM_COLORS[v] || ROOM_COLORS.classroom,
-                                                        stroke: ROOM_BORDERS[v] || ROOM_BORDERS.classroom,
-                                                    })}
-                                                >
-                                                    <SelectTrigger className="h-8 text-sm">
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {Object.keys(ROOM_COLORS).filter(k => k !== "corridor").map((key) => (
-                                                            <SelectItem key={key} value={key}>
-                                                                {key.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase())}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        )}
-
-                                        {/* Capacity */}
-                                        {selectedElement.type === "room" && (
-                                            <div>
-                                                <Label className="text-xs">Capacity</Label>
-                                                <Input
-                                                    type="number"
-                                                    value={selectedElement.capacity || 0}
-                                                    onChange={(e) => updateElement(selectedElement.id, { capacity: parseInt(e.target.value) || 0 })}
-                                                    className="h-8 text-sm"
-                                                    min={0}
-                                                />
-                                            </div>
-                                        )}
-
-                                        {/* Dimensions */}
-                                        {selectedElement.width !== undefined && selectedElement.type !== "wall" && (
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <div>
-                                                    <Label className="text-xs">Width</Label>
-                                                    <Input
-                                                        type="number"
-                                                        value={selectedElement.width || 0}
-                                                        onChange={(e) => updateElement(selectedElement.id, { width: parseInt(e.target.value) || 0 })}
-                                                        className="h-8 text-sm"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <Label className="text-xs">Height</Label>
-                                                    <Input
-                                                        type="number"
-                                                        value={selectedElement.height || 0}
-                                                        onChange={(e) => updateElement(selectedElement.id, { height: parseInt(e.target.value) || 0 })}
-                                                        className="h-8 text-sm"
-                                                    />
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Position */}
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div>
-                                                <Label className="text-xs text-muted-foreground">X</Label>
-                                                <Input value={Math.round(selectedElement.x)} className="h-7 text-xs font-mono" readOnly />
-                                            </div>
-                                            <div>
-                                                <Label className="text-xs text-muted-foreground">Y</Label>
-                                                <Input value={Math.round(selectedElement.y)} className="h-7 text-xs font-mono" readOnly />
-                                            </div>
-                                        </div>
-
-                                        {/* Font size for labels */}
-                                        {selectedElement.type === "label" && (
-                                            <div>
-                                                <Label className="text-xs">Font Size</Label>
-                                                <Input
-                                                    type="number"
-                                                    value={selectedElement.fontSize || 14}
-                                                    onChange={(e) => updateElement(selectedElement.id, { fontSize: parseInt(e.target.value) || 14 })}
-                                                    className="h-8 text-sm"
-                                                    min={8} max={48}
-                                                />
-                                            </div>
-                                        )}
+                                    <div className="flex gap-1">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7"
+                                            onClick={() => setSelectedId(null)}
+                                        >
+                                            <X className="h-3 w-3" />
+                                        </Button>
+                                        <Button
+                                            variant="destructive"
+                                            size="icon"
+                                            className="h-7 w-7"
+                                            onClick={() => deleteElement(selectedElement.id)}
+                                        >
+                                            <Trash2 className="h-3 w-3" />
+                                        </Button>
                                     </div>
                                 </div>
-                            </ScrollArea>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+
+                                <div className="space-y-3">
+                                    {/* Name (for rooms, staircases, elevators, corridors) */}
+                                    {(selectedElement.type === "room" || selectedElement.type === "staircase" ||
+                                        selectedElement.type === "elevator" || selectedElement.type === "corridor") && (
+                                        <div>
+                                            <Label className="text-xs">Name</Label>
+                                            <Input
+                                                value={selectedElement.name || ""}
+                                                onChange={(e) => updateElement(selectedElement.id, { name: e.target.value })}
+                                                className="h-8 text-sm"
+                                            />
+                                        </div>
+                                    )}
+
+                                    {/* Label text */}
+                                    {selectedElement.type === "label" && (
+                                        <div>
+                                            <Label className="text-xs">Text</Label>
+                                            <Input
+                                                value={selectedElement.text || ""}
+                                                onChange={(e) => updateElement(selectedElement.id, { text: e.target.value })}
+                                                className="h-8 text-sm"
+                                            />
+                                        </div>
+                                    )}
+
+                                    {/* Room type */}
+                                    {selectedElement.type === "room" && (
+                                        <div>
+                                            <Label className="text-xs">Room Type</Label>
+                                            <Select
+                                                value={selectedElement.roomType || "classroom"}
+                                                onValueChange={(v) => updateElement(selectedElement.id, {
+                                                    roomType: v,
+                                                    fill: ROOM_COLORS[v] || ROOM_COLORS.classroom,
+                                                    stroke: ROOM_BORDERS[v] || ROOM_BORDERS.classroom,
+                                                })}
+                                            >
+                                                <SelectTrigger className="h-8 text-sm">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {Object.keys(ROOM_COLORS).filter(k => k !== "corridor").map((key) => (
+                                                        <SelectItem key={key} value={key}>
+                                                            {key.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    )}
+
+                                    {/* Capacity */}
+                                    {selectedElement.type === "room" && (
+                                        <div>
+                                            <Label className="text-xs">Capacity</Label>
+                                            <Input
+                                                type="number"
+                                                value={selectedElement.capacity || 0}
+                                                onChange={(e) => updateElement(selectedElement.id, { capacity: parseInt(e.target.value) || 0 })}
+                                                className="h-8 text-sm"
+                                                min={0}
+                                            />
+                                        </div>
+                                    )}
+
+                                    {/* Dimensions */}
+                                    {selectedElement.width !== undefined && selectedElement.type !== "wall" && (
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <Label className="text-xs">Width</Label>
+                                                <Input
+                                                    type="number"
+                                                    value={selectedElement.width || 0}
+                                                    onChange={(e) => updateElement(selectedElement.id, { width: parseInt(e.target.value) || 0 })}
+                                                    className="h-8 text-sm"
+                                                />
+                                            </div>
+                                            <div>
+                                                <Label className="text-xs">Height</Label>
+                                                <Input
+                                                    type="number"
+                                                    value={selectedElement.height || 0}
+                                                    onChange={(e) => updateElement(selectedElement.id, { height: parseInt(e.target.value) || 0 })}
+                                                    className="h-8 text-sm"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Position */}
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <Label className="text-xs text-muted-foreground">X</Label>
+                                            <Input value={Math.round(selectedElement.x)} className="h-7 text-xs font-mono" readOnly />
+                                        </div>
+                                        <div>
+                                            <Label className="text-xs text-muted-foreground">Y</Label>
+                                            <Input value={Math.round(selectedElement.y)} className="h-7 text-xs font-mono" readOnly />
+                                        </div>
+                                    </div>
+
+                                    {/* Font size for labels */}
+                                    {selectedElement.type === "label" && (
+                                        <div>
+                                            <Label className="text-xs">Font Size</Label>
+                                            <Input
+                                                type="number"
+                                                value={selectedElement.fontSize || 14}
+                                                onChange={(e) => updateElement(selectedElement.id, { fontSize: parseInt(e.target.value) || 14 })}
+                                                className="h-8 text-sm"
+                                                min={8} max={48}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </ScrollArea>
+                    </div>
+                )}
             </div>
         </TooltipProvider>
     );

@@ -14,7 +14,11 @@ import {
 } from "lucide-react";
 
 import { MapEditorToolbar, type DrawMode } from "./map-editor-toolbar";
-import { FloorPlanEditor, type FloorPlan } from "./floor-plan";
+import type { FloorPlan } from "./floor-plan";
+const FloorPlanEditor = dynamic(
+    () => import("./floor-plan").then((m) => ({ default: m.FloorPlanEditor })),
+    { ssr: false, loading: () => <div className="flex items-center justify-center h-full text-muted-foreground">Loading floor plan editor...</div> }
+);
 import {
     MapPropertyPanel,
     type SelectedItem,
@@ -2548,34 +2552,10 @@ export function MapEditor({
                     onClose={() => setSelectedItem(null)}
                     onManageFloors={() => {
                         if (selectedItem?.type === 'building' && selectedItem.data.id) {
-                            loadFloorPlans(selectedItem.data.id);
-                            setShowFloorPlanOverlay(true);
+                            window.location.href = `/campus/${slug}/admin/floor-management?building=${selectedItem.data.id}`;
                         }
                     }}
                     saving={saving}
-                    rooms={editorRooms}
-                    onSaveRoom={async (room) => {
-                        try {
-                            const saved = await saveRoomAction(slug, room);
-                            if (room.id) {
-                                setEditorRooms(prev => prev.map(r => r.id === room.id ? saved : r));
-                            } else {
-                                setEditorRooms(prev => [...prev, saved]);
-                            }
-                            toast.success(room.id ? "Room updated" : "Room added");
-                        } catch (err: any) {
-                            toast.error("Failed to save room: " + err.message);
-                        }
-                    }}
-                    onDeleteRoom={async (roomId) => {
-                        try {
-                            await deleteRoomAction(slug, roomId);
-                            setEditorRooms(prev => prev.filter(r => r.id !== roomId));
-                            toast.success("Room deleted");
-                        } catch (err: any) {
-                            toast.error("Failed to delete room: " + err.message);
-                        }
-                    }}
                 />
             </div>
 
@@ -2651,12 +2631,9 @@ export function MapEditor({
             {editingFloorPlan && selectedItem?.type === 'building' && selectedItem.data.id && (
                 <div className="fixed inset-0 z-[2100] bg-background">
                     <FloorPlanEditor
-                        initialFloorPlan={editingFloorPlan.plan}
+                        existingPlan={editingFloorPlan.plan}
                         buildingId={selectedItem.data.id as string}
                         floorNumber={editingFloorPlan.number}
-                        buildingName={(selectedItem.data as BuildingData).name || "Building"}
-                        buildingWidth={(selectedItem.data as BuildingData).cw}
-                        buildingHeight={(selectedItem.data as BuildingData).ch}
                         onSave={async (plan) => {
                             try {
                                 setSaving(true);

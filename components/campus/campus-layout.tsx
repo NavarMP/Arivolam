@@ -26,6 +26,7 @@ import {
     BookMarked,
     LogOut,
     ChevronRight,
+    Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -113,6 +114,7 @@ function getSidebarNav(slug: string, role: string) {
             { label: "Timetable", href: `${base}/admin/timetable`, icon: Calendar },
             { label: "Events", href: `${base}/admin/events`, icon: Calendar },
             { label: "Map Editor", href: `${base}/admin/map-editor`, icon: Compass },
+            { label: "Floor Management", href: `${base}/admin/floor-management`, icon: Layers },
             { label: "Settings", href: `${base}/admin/settings`, icon: Settings },
             { label: "Profile", href: `${base}/profile`, icon: User },
         ],
